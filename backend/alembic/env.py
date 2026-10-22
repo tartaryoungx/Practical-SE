@@ -7,14 +7,16 @@ from sqlalchemy import create_engine, pool
 
 from app.core.database import Base
 from app.core.settings import get_settings
-from app.domains.access_control import models as role_models
+from app.domains.access_control import models as access_models
+from app.domains.returns import models as return_models
+from app.domains.users import models as user_models
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
-_ = role_models.Role
+_ = (access_models, return_models, user_models)
 
 
 def run_migrations_offline() -> None:

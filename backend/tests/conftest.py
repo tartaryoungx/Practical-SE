@@ -1,7 +1,9 @@
 """Story 000 fixtures. Temporary databases are created here and dropped afterward."""
 
 import os
+import shutil
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -32,6 +34,7 @@ def client():
         pytest.skip("PostgreSQL is not available for Story 000 tests")
 
     created = False
+    upload_dir = ""
     try:
         with admin_engine.connect() as connection:
             connection.execute(text(f'CREATE DATABASE "{temp_name}"'))
@@ -39,6 +42,12 @@ def client():
         os.environ["DATABASE_URL"] = make_url(base_url).set(database=temp_name).render_as_string(
             hide_password=False
         )
+        os.environ["BOOTSTRAP_ADMIN_EMAIL"] = "admin@example.com"
+        os.environ["BOOTSTRAP_ADMIN_PASSWORD"] = "Adminpass1"
+        os.environ["BOOTSTRAP_ADMIN_NAME"] = "Admin User"
+        os.environ["JWT_SECRET"] = "test-jwt-secret-value-0123456789ab"
+        upload_dir = tempfile.mkdtemp(prefix="gr-evidence-")
+        os.environ["UPLOAD_DIR"] = upload_dir
         from app.core.settings import get_settings
 
         get_settings.cache_clear()
@@ -47,6 +56,16 @@ def client():
         from alembic.config import Config
 
         command.upgrade(Config(str(BACKEND_DIR / "alembic.ini")), "head")
+
+        from app.core.database import SessionLocal, get_engine
+        from app.seed import seed_all
+
+        get_engine()
+        session = SessionLocal()
+        try:
+            seed_all(session)
+        finally:
+            session.close()
 
         from starlette.testclient import TestClient
 
@@ -64,6 +83,7 @@ def client():
                 pass
             with admin_engine.connect() as connection:
                 connection.execute(text(f'DROP DATABASE IF EXISTS "{temp_name}" WITH (FORCE)'))
+            shutil.rmtree(upload_dir, ignore_errors=True)
         admin_engine.dispose()
 
 

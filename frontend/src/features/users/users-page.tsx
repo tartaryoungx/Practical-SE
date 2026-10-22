@@ -29,25 +29,24 @@ export function UsersPage() {
     [target, setTarget] = useState<User | null>(null),
     [mode, setMode] = useState<Mode | null>(null),
     [role, setRole] = useState<Role>("STORE_STAFF"),
-    [storeList, setStores] = useState<{ id: string; name: string }[]>([]),
+    [temporaryPassword, setTemporaryPassword] = useState(""),
     [resetLink, setResetLink] = useState(""),
     [message, setMessage] = useState(""),
     action = useAction();
   async function open(m: Mode, u: User | null = null) {
     action.clear();
     setResetLink("");
+    setTemporaryPassword("");
     setTarget(u);
     setRole(u?.role || "STORE_STAFF");
     setMode(m);
-    if (m === "create" || m === "role")
-      await action.run(async () => setStores(await getApi().stores()));
   }
   async function finish(fn: () => Promise<unknown>) {
     await action.run(async () => {
       await fn();
       resource.reload();
       await refresh();
-      setMessage("บันทึกการเปลี่ยนแปลงบัญชีจำลองแล้ว");
+      setMessage("The account change was saved.");
       setMode(null);
     });
   }
@@ -58,13 +57,13 @@ export function UsersPage() {
   return (
     <>
       <Heading
-        title="ผู้ใช้งาน"
-        description="จัดการบัญชี บทบาท และการเข้าถึงของทีม"
+        title="Users"
+        description="Manage user accounts, roles, and team access"
         action={
           can("users.create") && (
             <Button onClick={() => void open("create")}>
               <Plus size={17} />
-              เพิ่มผู้ใช้งาน
+              Add User
             </Button>
           )
         }
@@ -76,7 +75,7 @@ export function UsersPage() {
       )}
       <div className="mb-5 flex items-center justify-between">
         <p className="text-sm font-medium">
-          บัญชีทั้งหมด{" "}
+          Total accounts{" "}
           <span className="ml-2 text-muted-foreground">
             {resource.data.length}
           </span>
@@ -87,12 +86,11 @@ export function UsersPage() {
         <table className="min-w-[730px]">
           <thead>
             <tr>
-              <th>ชื่อ / อีเมล</th>
-              <th>บทบาท</th>
-              <th>สาขา</th>
-              <th>สถานะ</th>
+              <th>Name / Email</th>
+              <th>Role</th>
+              <th>Status</th>
               <th>
-                <span className="sr-only">จัดการ</span>
+                <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
@@ -109,7 +107,7 @@ export function UsersPage() {
                         {u.name}
                         {u.id === session?.user.id && (
                           <span className="ml-2 text-xs text-muted-foreground">
-                            คุณ
+                            You
                           </span>
                         )}
                       </div>
@@ -125,17 +123,16 @@ export function UsersPage() {
                     {u.role}
                   </small>
                 </td>
-                <td>{u.storeId || "—"}</td>
                 <td>
                   <Badge tone={u.is_active ? "green" : "neutral"}>
-                    {u.is_active ? "ใช้งาน" : "ปิดใช้งาน"}
+                    {u.is_active ? "Active" : "Disabled"}
                   </Badge>
                 </td>
                 <td>
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={"จัดการ " + u.name}
+                    aria-label={"Manage " + u.name}
                     onClick={() => void open("actions", u)}
                   >
                     <MoreHorizontal size={18} />
@@ -145,11 +142,11 @@ export function UsersPage() {
             ))}
           </tbody>
         </table>
-        {!resource.data.length && <Empty text="ยังไม่มีบัญชีผู้ใช้งาน" />}
+        {!resource.data.length && <Empty text="No user accounts yet" />}
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
-        ชื่อและอีเมลแก้ไขแยกจากบทบาท สถานะ และรหัสผ่าน · ป้องกันการปิดบัญชีตนเอง
-        / Admin คนสุดท้าย
+        Name and email are edited separately from role, status, and password.
+        Self-disable and removal of the last administrator are prevented.
       </p>
       <Dialog
         open={mode !== null}
@@ -158,40 +155,40 @@ export function UsersPage() {
         }}
         title={
           mode === "create"
-            ? "เพิ่มผู้ใช้งาน"
+            ? "Add User"
             : mode === "edit"
-              ? "แก้ไขข้อมูลผู้ใช้"
+              ? "Edit user"
               : mode === "role"
-                ? "กำหนดบทบาท"
+                ? "Assign role"
                 : mode === "status"
                   ? target?.is_active
-                    ? "ปิดใช้งานบัญชี"
-                    : "เปิดใช้งานบัญชี"
+                    ? "Disable account"
+                    : "Reactivate account"
                   : mode === "reset"
-                    ? "รีเซ็ตรหัสผ่านโดย Admin"
+                    ? "Reset password"
                     : mode === "recovery"
-                      ? "ออกลิงก์กู้รหัสผ่าน"
-                      : "จัดการบัญชี"
+                      ? "Issue recovery link"
+                      : "Manage account"
         }
         description={
           target
             ? target.name + " · " + target.email
-            : "สร้างบัญชีจำลองและกำหนดสาขาให้ Staff"
+            : "Create an account and choose a role"
         }
       >
         {mode === "actions" && target && (
           <div className="space-y-2">
             {(
               [
-                ["edit", "users.edit", "แก้ไขชื่อ / อีเมล"],
-                ["role", "users.role", "เปลี่ยนบทบาท"],
+                ["edit", "users.edit", "Edit name / email"],
+                ["role", "users.role", "Change role"],
                 [
                   "status",
                   "users.status",
-                  target.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน",
+                  target.is_active ? "Disable" : "Reactivate",
                 ],
-                ["reset", "users.reset", "รีเซ็ตรหัสผ่าน"],
-                ["recovery", "users.reset", "ออกลิงก์กู้รหัสผ่าน"],
+                ["reset", "users.reset", "Reset password"],
+                ["recovery", "users.reset", "Issue recovery link"],
               ] as const
             )
               .filter(([, p]) => can(p))
@@ -210,7 +207,7 @@ export function UsersPage() {
               ))}
             {own && (
               <p className="pt-3 text-xs text-muted-foreground">
-                เปลี่ยนรหัสผ่านของตนเองจากเมนู “เปลี่ยนรหัสผ่าน”
+                Change your own password from the Change password page.
               </p>
             )}
           </div>
@@ -228,7 +225,6 @@ export function UsersPage() {
                       email: v.email,
                       password: v.password,
                       role,
-                      storeId: v.storeId || null,
                     })
                   : getApi().editUser(target!.id, {
                       name: v.name,
@@ -238,7 +234,7 @@ export function UsersPage() {
             }}
           >
             <Field
-              label="ชื่อผู้ใช้งาน"
+              label="Name"
               name="name"
               required
               maxLength={100}
@@ -246,7 +242,7 @@ export function UsersPage() {
               error={action.error?.fields.name}
             />
             <Field
-              label="อีเมล"
+              label="Email"
               name="email"
               type="email"
               required
@@ -256,17 +252,17 @@ export function UsersPage() {
             {mode === "create" && (
               <>
                 <Field
-                  label="รหัสผ่านเริ่มต้น"
+                  label="Initial Password"
                   name="password"
                   type="password"
                   required
                   minLength={8}
                   maxLength={128}
                   autoComplete="new-password"
-                  hint="8–128 ตัวอักษร · ไม่มีบังคับเปลี่ยนรหัสผ่านครั้งแรก"
+                  hint="8–128 characters. No forced change on first login."
                 />
                 <Select
-                  label="บทบาท"
+                  label="Role"
                   value={role}
                   onChange={(e) => setRole(e.target.value as Role)}
                 >
@@ -276,23 +272,6 @@ export function UsersPage() {
                     </option>
                   ))}
                 </Select>
-                {role === "STORE_STAFF" && (
-                  <Select
-                    label="สาขา · P-STORE (ชั่วคราว)"
-                    name="storeId"
-                    required
-                    defaultValue=""
-                  >
-                    <option value="" disabled>
-                      เลือกสาขา
-                    </option>
-                    {storeList.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </Select>
-                )}
               </>
             )}
             <Feedback action={action} />
@@ -302,10 +281,10 @@ export function UsersPage() {
                 variant="outline"
                 onClick={() => setMode(null)}
               >
-                ยกเลิก
+                Cancel
               </Button>
               <Submit busy={action.busy}>
-                {mode === "create" ? "สร้างผู้ใช้งาน" : "บันทึกข้อมูล"}
+                {mode === "create" ? "Create User" : "Save"}
               </Submit>
             </div>
           </form>
@@ -314,20 +293,12 @@ export function UsersPage() {
           <form
             className="space-y-4"
             onSubmit={(e) => {
-              const v = values(e);
-              void finish(() =>
-                getApi().setRole(
-                  target.id,
-                  role,
-                  target.role === "STORE_STAFF" && role === "STORE_STAFF"
-                    ? target.storeId
-                    : v.storeId || null,
-                ),
-              );
+              e.preventDefault();
+              void finish(() => getApi().setRole(target.id, role));
             }}
           >
             <Select
-              label="บทบาท"
+              label="Role"
               value={role}
               onChange={(e) => setRole(e.target.value as Role)}
             >
@@ -337,46 +308,24 @@ export function UsersPage() {
                 </option>
               ))}
             </Select>
-            {role === "STORE_STAFF" &&
-              (target.role === "STORE_STAFF" ? (
-                <Notice>
-                  สาขา: {target.storeId} · ไม่รองรับการย้ายสาขาใน Sprint 1
-                </Notice>
-              ) : (
-                <Select
-                  label="สาขา · P-STORE (ชั่วคราว)"
-                  name="storeId"
-                  required
-                  defaultValue=""
-                >
-                  <option disabled value="">
-                    เลือกสาขา
-                  </option>
-                  {storeList.map((s) => (
-                    <option value={s.id} key={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-              ))}
             <Notice>
-              บทบาทใหม่มีผลในการทำรายการครั้งถัดไป รวมถึงบัญชีที่กำลังเข้าใช้
+              The new role applies on the next request, including an existing session.
             </Notice>
             <Feedback action={action} />
-            <Submit busy={action.busy}>ยืนยันบทบาท</Submit>
+            <Submit busy={action.busy}>Confirm role</Submit>
           </form>
         )}
         {mode === "status" && target && (
           <div className="space-y-5">
             <Notice>
               {target.is_active
-                ? "บัญชีนี้จะเข้าสู่ระบบและใช้เซสชันจำลองเดิมไม่ได้"
-                : "บัญชีนี้จะกลับมาเข้าสู่ระบบได้"}
+                ? "This account will not be able to sign in, and its current session will end."
+                : "This account will be able to sign in again."}
             </Notice>
             <Feedback action={action} />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setMode(null)}>
-                ยกเลิก
+                Cancel
               </Button>
               <Button
                 disabled={action.busy}
@@ -386,7 +335,7 @@ export function UsersPage() {
                   )
                 }
               >
-                ยืนยัน{target.is_active ? "ปิด" : "เปิด"}ใช้งาน
+                Confirm {target.is_active ? "disable" : "reactivation"}
               </Button>
             </div>
           </div>
@@ -396,45 +345,67 @@ export function UsersPage() {
             className="space-y-4"
             onSubmit={(e) => {
               const v = values(e);
-              void finish(() => getApi().adminReset(target.id, v.password));
+              void action.run(async () => {
+                const temporary = await getApi().adminReset(target.id, v.password);
+                resource.reload();
+                await refresh();
+                if (temporary) {
+                  setTemporaryPassword(temporary);
+                  setMessage("");
+                } else {
+                  setMessage("The password was reset.");
+                  setMode(null);
+                }
+              });
             }}
           >
             <Notice>
-              รหัสผ่านเก่าและเซสชันจำลองเดิมจะใช้ไม่ได้
-              กรุณาส่งรหัสใหม่ให้ผู้ใช้ด้วยตนเอง
+              The previous password stops working. Give the new password to the
+              user directly. Leave the field blank to generate one.
             </Notice>
-            <Field
-              label="รหัสผ่านชั่วคราวที่ต้องการตั้ง"
-              name="password"
-              type="password"
-              required
-              minLength={8}
-              maxLength={128}
-              autoComplete="new-password"
-            />
+            {temporaryPassword ? (
+              <Field
+                label="Temporary password"
+                name="generated"
+                value={temporaryPassword}
+                readOnly
+              />
+            ) : (
+              <Field
+                label="Temporary password"
+                name="password"
+                type="password"
+                minLength={8}
+                maxLength={128}
+                autoComplete="new-password"
+                hint="Optional. A password is generated when this is blank."
+              />
+            )}
             <Feedback action={action} />
-            <Submit busy={action.busy}>ยืนยันรีเซ็ตรหัสผ่าน</Submit>
+            {!temporaryPassword && (
+              <Submit busy={action.busy}>Reset password</Submit>
+            )}
           </form>
         )}
         {mode === "recovery" && target && (
           <div className="space-y-4">
             <Notice>
-              P-RECOVERY · ชั่วคราว: Admin ส่งลิงก์ด้วยตนเอง โทเคนใช้ครั้งเดียว
-              อายุ 15 นาที ไม่มีการส่งอีเมล
+              The administrator delivers this link manually. The token works once
+              and expires after 15 minutes. No email is sent.
             </Notice>
             {resetLink ? (
               <>
                 <Field
-                  label="ลิงก์จำลองสำหรับส่งให้ผู้ใช้"
+                  label="Recovery link"
                   name="link"
                   value={resetLink}
                   readOnly
                 />
                 <p className="text-xs text-muted-foreground">
-                  ทดสอบในแท็บเดิม เพราะข้อมูลต้นแบบเก็บแยกตามแท็บ
+                  Open the link and set a new password. The token is single-use.
                 </p>
                 <Button asChild>
-                  <a href={resetLink}>เปิดหน้าตั้งรหัสผ่านใหม่</a>
+                  <a href={resetLink}>Open reset password page</a>
                 </Button>
               </>
             ) : (
@@ -451,7 +422,7 @@ export function UsersPage() {
                   })
                 }
               >
-                สร้างลิงก์จำลอง
+                Create recovery link
               </Button>
             )}
             <Feedback action={action} />

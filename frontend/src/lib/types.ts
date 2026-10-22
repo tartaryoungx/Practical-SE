@@ -13,9 +13,7 @@ export type User = {
   email: string;
   role: Role;
   is_active: boolean;
-  storeId: string | null;
 };
-export type Store = { id: string; name: string };
 export type Evidence = {
   id: string;
   filename: string;
@@ -23,14 +21,12 @@ export type Evidence = {
   size: number;
   uploaderId: string;
   createdAt: string;
-  preview: string;
 };
 export type Garment = {
   id: string;
   type: string;
   material: string;
   weight: number;
-  storeId: string;
   creatorId: string;
   createdAt: string;
   condition: Condition | null;
@@ -38,22 +34,23 @@ export type Garment = {
   confirmedRoute: Route | null;
   note: string;
   confirmedAt: string | null;
+  evidenceRequired: boolean;
   evidence: Evidence[];
 };
 export const permissions = [
-  { key: "users.read", group: "Account", label: "ดูผู้ใช้" },
-  { key: "users.create", group: "Account", label: "สร้างผู้ใช้" },
-  { key: "users.edit", group: "Account", label: "แก้ไขชื่อ / อีเมล" },
-  { key: "users.status", group: "Account", label: "ปิด / เปิดบัญชี" },
-  { key: "users.reset", group: "Account", label: "รีเซ็ตรหัสผ่าน / ออกลิงก์" },
-  { key: "users.role", group: "Account", label: "กำหนดบทบาท" },
-  { key: "access.read", group: "Account", label: "ดูสิทธิ์" },
-  { key: "access.write", group: "Account", label: "ตั้งค่าสิทธิ์" },
-  { key: "returns.read", group: "Return", label: "ดูเสื้อผ้า / หลักฐาน" },
-  { key: "returns.create", group: "Return", label: "บันทึกเสื้อผ้า" },
-  { key: "returns.assess", group: "Return", label: "ประเมินสภาพ" },
-  { key: "returns.evidence", group: "Return", label: "แนบหลักฐาน" },
-  { key: "returns.confirm", group: "Return", label: "ยืนยัน / เปลี่ยนเส้นทาง" },
+  { key: "users.read", group: "Account", label: "View users" },
+  { key: "users.create", group: "Account", label: "Create users" },
+  { key: "users.edit", group: "Account", label: "Edit name and email" },
+  { key: "users.status", group: "Account", label: "Disable or reactivate" },
+  { key: "users.reset", group: "Account", label: "Reset password or recovery link" },
+  { key: "users.role", group: "Account", label: "Assign role" },
+  { key: "access.read", group: "Account", label: "View permissions" },
+  { key: "access.write", group: "Account", label: "Configure permissions" },
+  { key: "returns.read", group: "Return", label: "View garments and evidence" },
+  { key: "returns.create", group: "Return", label: "Record a garment" },
+  { key: "returns.assess", group: "Return", label: "Assess condition" },
+  { key: "returns.evidence", group: "Return", label: "Attach evidence" },
+  { key: "returns.confirm", group: "Return", label: "Confirm or override route" },
   { key: "batch.reserved", group: "Batch", label: "Reserved access" },
   { key: "outcome.reserved", group: "Outcome", label: "Reserved access" },
   { key: "validation.reserved", group: "Validation", label: "Reserved access" },
@@ -62,19 +59,19 @@ export const permissions = [
 export type Permission = (typeof permissions)[number]["key"];
 export type Grants = Record<Role, Permission[]>;
 export const roleLabels: Record<Role, string> = {
-  ADMIN: "ผู้ดูแลระบบ",
-  STORE_STAFF: "พนักงานร้าน",
-  CONTRACTOR: "ผู้รับเหมา",
-  HEAD: "หัวหน้าโครงการ",
+  ADMIN: "Administrator",
+  STORE_STAFF: "Store staff",
+  CONTRACTOR: "Contractor",
+  HEAD: "Project head",
 };
 export const conditionLabels: Record<Condition, string> = {
-  GOOD: "สภาพดี",
-  WORN: "สึกหรอ",
-  DAMAGED: "เสียหาย",
-  STAINED: "มีคราบ",
+  GOOD: "Good",
+  WORN: "Worn",
+  DAMAGED: "Damaged",
+  STAINED: "Stained",
 };
 export const routeLabels: Record<Route, string> = {
-  DIRECT_RESALE_CANDIDATE: "พิจารณาขายต่อ",
-  THIRD_PARTY_CONTRACTOR: "ส่งผู้รับเหมาคัดแยก",
+  DIRECT_RESALE_CANDIDATE: "Direct resale candidate",
+  THIRD_PARTY_CONTRACTOR: "Third-party contractor",
 };
 export type Session = { user: User; grants: Grants };

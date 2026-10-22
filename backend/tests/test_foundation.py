@@ -99,7 +99,16 @@ def test_upgrade_creates_only_the_roles_table(db_session) -> None:
             )
         ).scalars()
     )
-    assert names == {"roles", "alembic_version"}
+    assert names == {
+            "alembic_version",
+            "evidence_files",
+            "garments",
+            "password_reset_tokens",
+            "permissions",
+            "role_permissions",
+            "roles",
+            "users",
+        }
 
 
 def test_seed_is_idempotent(db_session) -> None:

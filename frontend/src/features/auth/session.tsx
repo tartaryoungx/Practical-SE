@@ -9,7 +9,7 @@ import {
 } from "react";
 import type { Session, Permission } from "@/lib/types";
 import { getApi } from "@/lib/api";
-import { effective } from "@/lib/mock/service";
+import { effective } from "@/lib/access";
 const Context = createContext<{
   session: Session | null;
   ready: boolean;

@@ -1,8 +1,8 @@
 # Garment Returns
 
-Sprint 1 foundation for a local FastAPI backend and PostgreSQL 16. The Next.js prototype in `frontend/` is unchanged and still uses its in-browser mock.
+Sprint 1 local application: a Next.js workspace and a FastAPI backend on PostgreSQL 16. Compose runs PostgreSQL only. FastAPI and Next.js run on the host.
 
-This slice provides the host processes, database connectivity, the Alembic schema, shared API errors, CORS, and the four fixed roles: `ADMIN`, `STORE_STAFF`, `CONTRACTOR`, and `HEAD`. It does not implement authentication, users, permissions, garments, or evidence.
+The signed-in UI calls the API at `NEXT_PUBLIC_API_BASE_URL`. Account administration is ADMIN-only. Garment access follows granted Return permissions and is not limited by store.
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env.local
 ```
 
-`frontend/.env.local` is unused by the current prototype. The mock client does not call the API.
+`frontend/.env.local` supplies the public API base URL. The UI sends credentialed requests to that origin.
 
 Match the database name, user, and password in both env files. The sample password is `replace_me`. If you choose a different password and it contains reserved URL characters, URL-encode it in `DATABASE_URL` only. If port 5432 is already in use, set the same new port in `POSTGRES_PORT` and in `DATABASE_URL`. Use host `localhost`, not the Compose service name.
 
@@ -68,9 +68,11 @@ uvicorn app.main:app --reload
 npm run dev
 ```
 
-The API is http://localhost:8000. `GET /health` checks the database with `SELECT 1` and returns `{"status": "ok"}`. Interactive API docs are at http://localhost:8000/docs. The prototype remains at http://localhost:3000 and does not use this API yet.
+The API is http://localhost:8000. `GET /health` checks the database with `SELECT 1` and returns `{"status": "ok"}`. Interactive API docs are at http://localhost:8000/docs. The workspace is at http://localhost:3000.
 
-Run `python -m app.seed` again whenever you need to confirm the roles exist. A second run inserts nothing.
+`python -m app.seed` creates the four roles, permission definitions, and the initial grants when no grants exist yet. It also creates the bootstrap administrator from `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` when that email is new. Running it again does not duplicate rows, reset that password, or overwrite grants. The example bootstrap password is `replace_me`.
+
+Run `python -m app.seed` again whenever you need to confirm the roles exist. A second run inserts nothing new when the catalog and administrator are already present.
 
 ## Tests
 

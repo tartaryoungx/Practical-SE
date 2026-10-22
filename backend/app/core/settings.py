@@ -2,9 +2,10 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
@@ -23,8 +24,12 @@ class Settings(BaseSettings):
     cookie_name: str = "access_token"
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
     upload_dir: str = "uploads"
+    bootstrap_admin_email: str = "admin@example.com"
+    bootstrap_admin_password: str = "replace_me"
+    bootstrap_admin_name: str = "Bootstrap Admin"
+    csrf_cookie_name: str = "csrf_token"
 
     @field_validator("cors_origins", mode="before")
     @classmethod

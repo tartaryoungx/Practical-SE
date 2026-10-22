@@ -19,8 +19,23 @@ def create_app() -> FastAPI:
         allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Accept", "Authorization", "Content-Type", "X-Requested-With"],
+        allow_headers=[
+            "Accept",
+            "Authorization",
+            "Content-Type",
+            "X-CSRF-Token",
+            "X-Requested-With",
+        ],
     )
+    from app.domains.access_control.router import router as access_router
+    from app.domains.auth.router import router as auth_router
+    from app.domains.returns.router import router as returns_router
+    from app.domains.users.router import router as users_router
+
+    app.include_router(auth_router)
+    app.include_router(users_router)
+    app.include_router(access_router)
+    app.include_router(returns_router)
 
     @app.get("/health")
     def health(db: Session = Depends(get_db)) -> dict[str, str]:

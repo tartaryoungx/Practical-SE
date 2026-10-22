@@ -26,7 +26,7 @@ test("all four roles authenticate; account / Return boundaries and same-store pe
   }
   await a.login("staff@demo.test", "Demo1234!");
   assert.ok((await a.garments()).some((g) => g.creatorId === "u-peer"));
-  await rejects(a.garment("GR-0004"), "NOT_FOUND");
+  assert.ok((await a.garments()).some((g) => g.id === "GR-0004"));
   await a.logout();
   await rejects(a.garments(), "UNAUTHENTICATED");
   await rejects(a.login("disabled@demo.test", "Demo1234!"), "CREDENTIALS");
@@ -39,7 +39,6 @@ test("create Staff, record, assessment, override, finality and retrieval across 
     name: "New Staff",
     email: " NEW@demo.test ",
     role: "STORE_STAFF",
-    storeId: "BKK-01",
     password: "New12345!",
   });
   assert.equal(u.email, "new@demo.test");
@@ -50,17 +49,17 @@ test("create Staff, record, assessment, override, finality and retrieval across 
     weight: 0.2,
   });
   assert.equal(g.condition, null);
-  assert.equal(g.storeId, "BKK-01");
+  assert.equal(g.creatorId, u.id);
   await rejects(a.confirm(g.id, "DIRECT_RESALE_CANDIDATE", ""), "ASSESSMENT");
   await a.assess(g.id, "GOOD");
   await rejects(a.confirm(g.id, "THIRD_PARTY_CONTRACTOR", "   "), "VALIDATION");
-  await a.confirm(g.id, "THIRD_PARTY_CONTRACTOR", "  คัดแยกเพิ่มเติม  ");
+  await a.confirm(g.id, "THIRD_PARTY_CONTRACTOR", "  Further sorting  ");
   await rejects(a.assess(g.id, "WORN"), "READ_ONLY");
   await rejects(a.confirm(g.id, "THIRD_PARTY_CONTRACTOR", ""), "READ_ONLY");
   await a.logout();
   await a.login(u.email, "New12345!");
   assert.ok((await a.garments()).some((x) => x.id === g.id));
-  assert.equal((await a.garment(g.id)).note, "คัดแยกเพิ่มเติม");
+  assert.equal((await a.garment(g.id)).note, "Further sorting");
 });
 test("condition mappings and evidence gates preserve unchanged confirmation state", async () => {
   const a = api();
@@ -94,17 +93,16 @@ test("account actions, uniqueness, last-admin, role updates and disabled login",
   const a = api();
   await a.login("admin@demo.test", "Demo1234!");
   await rejects(a.setStatus("u-admin", false), "SELF_DISABLE");
-  await rejects(a.setRole("u-admin", "HEAD", null), "LAST_ADMIN");
+  await rejects(a.setRole("u-admin", "HEAD"), "LAST_ADMIN");
   await rejects(
     a.editUser("u-staff", { name: "Staff", email: " ADMIN@demo.test " }),
     "CONFLICT",
   );
   await rejects(
     a.createUser({
-      name: "S",
+      name: " ",
       email: "s@demo.test",
-      role: "STORE_STAFF",
-      storeId: null,
+      role: "HEAD",
       password: "Demo1234!",
     }),
     "VALIDATION",
@@ -113,7 +111,7 @@ test("account actions, uniqueness, last-admin, role updates and disabled login",
   await a.setStatus("u-staff", false);
   await rejects(a.login("staff@demo.test", "Demo1234!"), "CREDENTIALS");
   await a.setStatus("u-staff", true);
-  await a.setRole("u-staff", "HEAD", null);
+  await a.setRole("u-staff", "HEAD");
   await a.login("staff@demo.test", "Demo1234!");
   assert.equal((await a.session())?.user.name, "Changed");
   assert.equal((await a.session())?.user.role, "HEAD");
@@ -124,8 +122,8 @@ test("permission revoke/restore, management lockout and unresolved grants", asyn
   await a.login("admin@demo.test", "Demo1234!");
   const initial = await a.grants();
   await rejects(a.saveGrants("ADMIN", []), "LAST_ADMIN");
-  await rejects(a.saveGrants("HEAD", ["returns.read"]), "UNRESOLVED");
-  assert.deepEqual(await a.grants(), initial);
+  await a.saveGrants("HEAD", ["returns.read"]);
+  assert.ok((await a.grants()).HEAD.includes("returns.read"));
   await a.saveGrants(
     "STORE_STAFF",
     initial.STORE_STAFF.filter((p) => p !== "returns.create"),
@@ -184,7 +182,6 @@ test("tab persistence and expired recovery; storage failure does not save a muta
       name: "Rejected",
       email: "reject@demo.test",
       role: "HEAD",
-      storeId: null,
       password: "Demo1234!",
     }),
     "STORAGE",

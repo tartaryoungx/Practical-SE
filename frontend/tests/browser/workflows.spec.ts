@@ -1,51 +1,51 @@
 import { test, expect, type Page } from "@playwright/test";
-async function login(page: Page, role = "Staff · สยาม") {
+async function login(page: Page, role = "Staff") {
   await page.goto("/login");
   await page.getByRole("button", { name: role, exact: true }).click();
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "ออกจากระบบ", exact: true }),
+    page.getByRole("button", { name: "Sign out", exact: true }),
   ).toBeVisible();
 }
 test("Staff confirms an override and retrieves read-only record after a new login", async ({
   page,
 }) => {
   await login(page);
-  await page.getByRole("link", { name: "บันทึกเสื้อผ้า", exact: true }).click();
-  await page.getByLabel("ประเภทเสื้อผ้า").fill("เสื้อทดสอบ Browser");
-  await page.getByLabel(/^วัสดุ\s*\*?$/).fill("Cotton");
-  await page.getByLabel("น้ำหนัก (กิโลกรัม)").fill("0.3");
-  await page.getByRole("button", { name: "บันทึกและประเมินต่อ" }).click();
+  await page.getByRole("link", { name: "Record a garment", exact: true }).click();
+  await page.getByLabel("Garment type").fill("Browser test shirt");
+  await page.getByLabel(/^Material\s*\*?$/).fill("Cotton");
+  await page.getByLabel("Weight (kilograms)").fill("0.3");
+  await page.getByRole("button", { name: "Save and assess" }).click();
   await expect(page.getByRole("heading", { name: /GR-0005/ })).toBeVisible();
-  await page.getByRole("button", { name: /GOOD สภาพดี/ }).click();
+  await page.getByRole("button", { name: /GOOD Good/ }).click();
   await page
-    .getByRole("button", { name: "บันทึกการประเมิน", exact: true })
+    .getByRole("button", { name: "Save assessment", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "พิจารณาขายต่อ", exact: true }),
+    page.getByRole("heading", { name: "Direct resale candidate", exact: true }),
   ).toBeVisible();
-  await page.getByRole("radio", { name: "ส่งผู้รับเหมาคัดแยก" }).check();
+  await page.getByRole("radio", { name: "Third-party contractor" }).check();
   await expect(
-    page.getByRole("button", { name: "เปลี่ยนเส้นทางและยืนยัน" }),
+    page.getByRole("button", { name: "Override and confirm" }),
   ).toBeDisabled();
-  await page.getByLabel("เหตุผลในการเปลี่ยนเส้นทาง").fill("ส่งคัดแยกเพิ่มเติม");
-  await page.getByRole("button", { name: "เปลี่ยนเส้นทางและยืนยัน" }).click();
+  await page.getByLabel("Reason for changing the route").fill("Further sorting");
+  await page.getByRole("button", { name: "Override and confirm" }).click();
   await page
-    .getByRole("button", { name: "ยืนยันผลจำลอง", exact: true })
+    .getByRole("button", { name: "Confirm decision", exact: true })
     .click();
   await expect(
     page.getByText(
-      "ยืนยันผลแล้ว · สภาพ หลักฐาน และเส้นทางเป็นข้อมูลอ่านอย่างเดียว",
+      "Confirmed. Condition, evidence, and route are read-only.",
     ),
   ).toBeVisible();
-  await page.getByRole("button", { name: "ออกจากระบบ", exact: true }).click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await login(page);
   await page.getByRole("link", { name: "GR-0005", exact: true }).click();
   await expect(
-    page.getByText("ส่งคัดแยกเพิ่มเติม", { exact: true }),
+    page.getByText("Further sorting", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /GOOD สภาพดี/ }),
+    page.getByRole("button", { name: /GOOD Good/ }),
   ).toBeDisabled();
 });
 test("damaged garment requires evidence and handles upload rejection then image preview", async ({
@@ -53,22 +53,22 @@ test("damaged garment requires evidence and handles upload rejection then image 
 }) => {
   await login(page);
   await page.getByRole("link", { name: "GR-0001", exact: true }).click();
-  await page.getByRole("button", { name: /DAMAGED เสียหาย/ }).click();
+  await page.getByRole("button", { name: /DAMAGED Damaged/ }).click();
   await page
-    .getByRole("button", { name: "บันทึกการประเมิน", exact: true })
+    .getByRole("button", { name: "Save assessment", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "ยืนยันตามคำแนะนำ", exact: true }),
+    page.getByRole("button", { name: "Confirm recommendation", exact: true }),
   ).toBeDisabled();
-  await page.getByLabel("เลือกรูปหลักฐาน").setInputFiles({
+  await page.getByLabel("Choose evidence image").setInputFiles({
     name: "invalid.png",
     mimeType: "image/png",
     buffer: Buffer.from("invalid"),
   });
   await expect(
-    page.getByRole("alert").filter({ hasText: "เนื้อหาไฟล์ไม่ตรง" }),
+    page.getByRole("alert").filter({ hasText: "not a supported image" }),
   ).toBeVisible();
-  await page.getByLabel("เลือกรูปหลักฐาน").setInputFiles({
+  await page.getByLabel("Choose evidence image").setInputFiles({
     name: "evidence.png",
     mimeType: "image/png",
     buffer: Buffer.from(
@@ -78,19 +78,19 @@ test("damaged garment requires evidence and handles upload rejection then image 
   });
   await page.getByRole("button", { name: /evidence.png/ }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByRole("button", { name: "ปิดหน้าต่าง" }).click();
+  await page.getByRole("button", { name: "Close" }).click();
   await expect(
-    page.getByRole("button", { name: "ยืนยันตามคำแนะนำ", exact: true }),
+    page.getByRole("button", { name: "Confirm recommendation", exact: true }),
   ).toBeEnabled();
   await page
-    .getByRole("button", { name: "ยืนยันตามคำแนะนำ", exact: true })
+    .getByRole("button", { name: "Confirm recommendation", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "ยืนยันผลจำลอง", exact: true })
+    .getByRole("button", { name: "Confirm decision", exact: true })
     .click();
   await expect(
     page.getByText(
-      "ยืนยันผลแล้ว · สภาพ หลักฐาน และเส้นทางเป็นข้อมูลอ่านอย่างเดียว",
+      "Confirmed. Condition, evidence, and route are read-only.",
     ),
   ).toBeVisible();
 });
@@ -99,68 +99,67 @@ test("Admin creates Staff, edits, changes status, reviews permissions and recove
 }) => {
   await login(page, "Admin");
   await page
-    .getByRole("button", { name: "เพิ่มผู้ใช้งาน", exact: true })
+    .getByRole("button", { name: "Add User", exact: true })
     .click();
-  await page.getByLabel("ชื่อผู้ใช้งาน").fill("Browser Staff");
-  await page.getByLabel(/^อีเมล\s*\*?$/).fill("browser@demo.test");
-  await page.getByLabel("รหัสผ่านเริ่มต้น").fill("Browser123!");
-  await page.getByLabel("สาขา · P-STORE").selectOption("BKK-01");
+  await page.getByLabel("Name").fill("Browser Staff");
+  await page.getByLabel(/^Email\s*\*?$/).fill("browser@demo.test");
+  await page.getByLabel("Initial Password").fill("Browser123!");
   await page
-    .getByRole("button", { name: "สร้างผู้ใช้งาน", exact: true })
+    .getByRole("button", { name: "Create User", exact: true })
     .click();
   await expect(
     page.getByText("browser@demo.test", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "จัดการ Browser Staff" }).click();
+  await page.getByRole("button", { name: "Manage Browser Staff" }).click();
   await page
-    .getByRole("button", { name: "แก้ไขชื่อ / อีเมล", exact: true })
+    .getByRole("button", { name: "Edit name / email", exact: true })
     .click();
-  await page.getByLabel("ชื่อผู้ใช้งาน").fill("Browser Edited");
-  await page.getByRole("button", { name: "บันทึกข้อมูล", exact: true }).click();
+  await page.getByLabel("Name").fill("Browser Edited");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Browser Edited", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "จัดการ Browser Edited" }).click();
-  await page.getByRole("button", { name: "ปิดใช้งาน", exact: true }).click();
+  await page.getByRole("button", { name: "Manage Browser Edited" }).click();
+  await page.getByRole("button", { name: "Disable", exact: true }).click();
   await page
-    .getByRole("button", { name: "ยืนยันปิดใช้งาน", exact: true })
+    .getByRole("button", { name: "Confirm disable", exact: true })
     .click();
   await expect(
     page.getByRole("row").filter({ hasText: "browser@demo.test" }),
-  ).toContainText("ปิดใช้งาน");
-  await page.getByRole("button", { name: "จัดการ Browser Edited" }).click();
-  await page.getByRole("button", { name: "เปิดใช้งาน", exact: true }).click();
+  ).toContainText("Disabled");
+  await page.getByRole("button", { name: "Manage Browser Edited" }).click();
+  await page.getByRole("button", { name: "Reactivate", exact: true }).click();
   await page
-    .getByRole("button", { name: "ยืนยันเปิดใช้งาน", exact: true })
+    .getByRole("button", { name: "Confirm reactivation", exact: true })
     .click();
-  await page.getByRole("link", { name: "ตั้งค่าสิทธิ์", exact: true }).click();
+  await page.getByRole("link", { name: "Permissions", exact: true }).click();
   await page
-    .getByRole("checkbox", { name: "STORE_STAFF บันทึกเสื้อผ้า", exact: true })
+    .getByRole("checkbox", { name: "STORE_STAFF Record a garment", exact: true })
     .uncheck();
-  await page.getByRole("button", { name: "บันทึกสิทธิ์", exact: true }).click();
+  await page.getByRole("button", { name: "Save permissions", exact: true }).click();
   await expect(
-    page.getByText("บันทึกสิทธิ์จำลองแล้ว มีผลในการทำรายการครั้งถัดไป"),
+    page.getByText("Permissions saved. They apply on the next request."),
   ).toBeVisible();
   await page
-    .getByRole("link", { name: "ทบทวนการเข้าถึง", exact: true })
+    .getByRole("link", { name: "Access review", exact: true })
     .click();
   await expect(
-    page.getByRole("row").filter({ hasText: "บันทึกเสื้อผ้า" }),
-  ).toContainText("ไม่ให้สิทธิ์");
+    page.getByRole("row").filter({ hasText: "Record a garment" }),
+  ).toContainText("Not granted");
   await page
-    .getByRole("link", { name: "จัดการผู้ใช้งาน", exact: true })
+    .getByRole("link", { name: "User management", exact: true })
     .click();
-  await page.getByRole("button", { name: "จัดการ Browser Edited" }).click();
+  await page.getByRole("button", { name: "Manage Browser Edited" }).click();
   await page
-    .getByRole("button", { name: "ออกลิงก์กู้รหัสผ่าน", exact: true })
+    .getByRole("button", { name: "Issue recovery link", exact: true })
     .click();
-  await page.getByRole("button", { name: "สร้างลิงก์จำลอง" }).click();
-  await page.getByRole("link", { name: "เปิดหน้าตั้งรหัสผ่านใหม่" }).click();
-  await page.getByLabel(/^รหัสผ่านใหม่\s*\*?$/).fill("Recovered123!");
-  await page.getByLabel("ยืนยันรหัสผ่านใหม่").fill("Recovered123!");
+  await page.getByRole("button", { name: "Create recovery link" }).click();
+  await page.getByRole("link", { name: "Open reset password page" }).click();
+  await page.getByLabel(/^New password\s*\*?$/).fill("Recovered123!");
+  await page.getByLabel("Confirm new password").fill("Recovered123!");
   await page
-    .getByRole("button", { name: "ตั้งรหัสผ่านใหม่", exact: true })
+    .getByRole("button", { name: "Set new password", exact: true })
     .click();
   await expect(
-    page.getByText("ตั้งรหัสผ่านจำลองใหม่แล้ว ลิงก์นี้ใช้ซ้ำไม่ได้"),
+    page.getByText("The password was changed. This link cannot be used again."),
   ).toBeVisible();
 });
 test("mobile self-service role, change password and denied direct route", async ({
@@ -169,31 +168,31 @@ test("mobile self-service role, change password and denied direct route", async 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/login");
   await page.getByRole("button", { name: "Head", exact: true }).click();
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "โปรไฟล์ของฉัน", exact: true }),
+    page.getByRole("heading", { name: "My profile", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("link", { name: "เปลี่ยนรหัสผ่าน", exact: true })
+    .getByRole("link", { name: "Change password", exact: true })
     .click();
-  await page.getByLabel("รหัสผ่านปัจจุบัน").fill("Demo1234!");
-  await page.getByLabel(/^รหัสผ่านใหม่\s*\*?$/).fill("Changed123!");
-  await page.getByLabel("ยืนยันรหัสผ่านใหม่").fill("Changed123!");
+  await page.getByLabel("Current password").fill("Demo1234!");
+  await page.getByLabel(/^New password\s*\*?$/).fill("Changed123!");
+  await page.getByLabel("Confirm new password").fill("Changed123!");
   await page
-    .getByRole("button", { name: "เปลี่ยนรหัสผ่าน", exact: true })
+    .getByRole("button", { name: "Change password", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "ยินดีต้อนรับกลับ" }),
+    page.getByRole("heading", { name: "Welcome back" }),
   ).toBeVisible();
-  await page.getByLabel(/^อีเมล\s*\*?$/).fill("head@demo.test");
-  await page.getByLabel(/^รหัสผ่าน\s*\*?$/).fill("Changed123!");
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await page.getByLabel(/^Email\s*\*?$/).fill("head@demo.test");
+  await page.getByLabel(/^Password\s*\*?$/).fill("Changed123!");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "โปรไฟล์ของฉัน", exact: true }),
+    page.getByRole("heading", { name: "My profile", exact: true }),
   ).toBeVisible();
   await page.goto("/garments");
   await expect(
-    page.getByRole("alert").filter({ hasText: "ไม่มีสิทธิ์" }),
+    page.getByRole("alert").filter({ hasText: "do not have access" }),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -207,7 +206,7 @@ test("responsive layouts and keyboard dialog focus", async ({
 }, testInfo) => {
   await login(page);
   await expect(
-    page.getByRole("heading", { name: "เสื้อผ้ารับคืน", exact: true }),
+    page.getByRole("heading", { name: "Returned garments", exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("desktop-list.png"),
@@ -223,7 +222,7 @@ test("responsive layouts and keyboard dialog focus", async ({
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "เปิดเมนู" }).click();
+  await page.getByRole("button", { name: "Open menu" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Tab");
   expect(
@@ -232,7 +231,7 @@ test("responsive layouts and keyboard dialog focus", async ({
     ),
   ).toBeTruthy();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "เปิดเมนู" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Open menu" })).toBeFocused();
   await page.screenshot({
     path: testInfo.outputPath("mobile-detail.png"),
     fullPage: true,
