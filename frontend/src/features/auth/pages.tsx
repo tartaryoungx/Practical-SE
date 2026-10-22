@@ -28,21 +28,21 @@ function AuthLayout({ children }: { children: ReactNode }) {
         </div>
         <div>
           <span className="text-xs tracking-[.22em] text-green-200">
-            TEXTILE TAKE-BACK / SPRINT 1
+            GARMENT RETURN MANAGEMENT
           </span>
           <h1 className="mt-7 text-5xl leading-tight font-medium">
-            Record every return
+            Track every return
             <br />
-            and keep its route
+            from intake to routing
           </h1>
           <p className="mt-6 max-w-sm text-sm leading-7 text-green-100/75">
-            Record a garment, assess its condition, and confirm where it goes.
+            Manage returned garments, assess their condition, and record the approved processing route.
           </p>
           <div className="mt-12 flex gap-3 text-xs text-green-100/75">
-            <ShieldCheck size={17} /> Access follows the signed-in account
+            <ShieldCheck size={17} /> Secure access based on your assigned role
           </div>
         </div>
-          <p className="text-xs text-green-100/60">Internal garment returns workspace</p>
+          <p className="text-xs text-green-100/60">Internal garment return management system</p>
       </section>
       <section className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
