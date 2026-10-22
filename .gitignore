@@ -1,1 +1,17 @@
 Personal Knowledge - Effective Prompt Engineering.txt
+
+# Local secrets. Example files stay committable.
+.env
+!.env.example
+!**/.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Reserved local upload directory for a later story.
+backend/uploads/
