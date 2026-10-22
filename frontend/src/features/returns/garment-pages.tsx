@@ -1,8 +1,7 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Plus,
   ArrowLeft,
@@ -24,7 +23,6 @@ import {
   type Condition,
   type Route,
 } from "@/lib/types";
-import { mockPolicy } from "@/lib/mock/service";
 import { useSession } from "@/features/auth/session";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -50,15 +48,15 @@ function Status({ g }: { g: Garment }) {
       tone={g.confirmedRoute ? "green" : g.condition ? "amber" : "neutral"}
     >
       {g.confirmedRoute
-        ? "ยืนยันแล้ว"
+        ? "Confirmed"
         : g.condition
-          ? "รอยืนยัน"
-          : "ยังไม่ประเมิน"}
+          ? "Awaiting confirmation"
+          : "Not assessed"}
     </Badge>
   );
 }
 export function GarmentsPage() {
-  const { can, session } = useSession(),
+  const { can } = useSession(),
     resource = useResource(useCallback(() => getApi().garments(), []));
   if (resource.error)
     return <ResourceError error={resource.error} retry={resource.reload} />;
@@ -66,14 +64,14 @@ export function GarmentsPage() {
   return (
     <>
       <Heading
-        title="เสื้อผ้ารับคืน"
-        description="บันทึก ประเมิน และติดตามการตัดสินใจของแต่ละชิ้น"
+        title="Returned garments"
+        description="Record, assess, and follow each item's decision"
         action={
           can("returns.create") && (
             <Button asChild>
               <Link href="/garments/new">
                 <Plus size={17} />
-                บันทึกเสื้อผ้า
+                Record garment
               </Link>
             </Button>
           )
@@ -81,25 +79,24 @@ export function GarmentsPage() {
       />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm">
-          รายการในสาขา{" "}
-          <span className="font-semibold">{session?.user.storeId}</span>{" "}
+          All records{" "}
           <span className="ml-2 text-muted-foreground">
-            · {resource.data.length} ชิ้น
+            · {resource.data.length} items
           </span>
         </div>
-        <Badge tone="amber">P-STORE · กฎชั่วคราว</Badge>
+        <Badge>All accessible records</Badge>
       </div>
       <div className="table-wrap">
         <table className="min-w-[760px]">
           <thead>
             <tr>
-              <th>รหัส / ประเภท</th>
-              <th>บันทึกเมื่อ</th>
-              <th>สภาพ</th>
-              <th>สถานะ</th>
-              <th>เส้นทางที่ยืนยัน</th>
+              <th>ID / Type</th>
+              <th>Recorded</th>
+              <th>Condition</th>
+              <th>Status</th>
+              <th>Confirmed route</th>
               <th>
-                <span className="sr-only">ดูรายละเอียด</span>
+                <span className="sr-only">View details</span>
               </th>
             </tr>
           </thead>
@@ -124,12 +121,12 @@ export function GarmentsPage() {
                   {g.confirmedRoute ? (
                     routeLabels[g.confirmedRoute]
                   ) : (
-                    <span className="text-muted-foreground">ยังไม่ยืนยัน</span>
+                    <span className="text-muted-foreground">Not confirmed</span>
                   )}
                 </td>
                 <td>
                   <Button asChild size="icon" variant="ghost">
-                    <Link href={"/garments/" + g.id} aria-label={"ดู " + g.id}>
+                    <Link href={"/garments/" + g.id} aria-label={"View " + g.id}>
                       <ArrowRight size={17} />
                     </Link>
                   </Button>
@@ -139,18 +136,18 @@ export function GarmentsPage() {
           </tbody>
         </table>
         {resource.data.length === 0 && (
-          <Empty text="ยังไม่มีเสื้อผ้าในสาขานี้">
+          <Empty text="No garments yet">
             {can("returns.create") && (
               <Button asChild>
-                <Link href="/garments/new">บันทึกชิ้นแรก</Link>
+                <Link href="/garments/new">Record the first garment</Link>
               </Button>
             )}
           </Empty>
         )}
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
-        ดูข้อมูลของเพื่อนร่วมสาขาได้ตามสิทธิ์ ·
-        ปลายทางที่เลือกยังไม่ใช่ผลขายหรือรีไซเคิลจริง
+        Authorized users can open records created by other people. A selected
+        route is not a completed resale or recycling outcome.
       </p>
     </>
   );
@@ -160,7 +157,7 @@ export function NewGarmentPage() {
     router = useRouter(),
     action = useAction();
   if (!can("returns.create"))
-    return <Notice tone="error">คุณไม่มีสิทธิ์บันทึกเสื้อผ้า</Notice>;
+    return <Notice tone="error">You do not have permission to record a garment.</Notice>;
   return (
     <>
       <Link
@@ -168,11 +165,11 @@ export function NewGarmentPage() {
         className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground"
       >
         <ArrowLeft size={15} />
-        กลับรายการเสื้อผ้า
+        Back to garments
       </Link>
       <Heading
-        title="บันทึกเสื้อผ้ารับคืน"
-        description="หนึ่งรายการต่อหนึ่งชิ้น เริ่มจากข้อมูลเบื้องต้นแล้วประเมินสภาพในขั้นถัดไป"
+        title="Record a returned garment"
+        description="One record per item. Start with the basic details, then assess the condition."
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <Card>
@@ -192,24 +189,24 @@ export function NewGarmentPage() {
           >
             <div className="flex items-center gap-3 border-b pb-5">
               <Shirt size={22} className="text-primary" />
-              <h2 className="font-semibold">ข้อมูลเสื้อผ้า</h2>
+              <h2 className="font-semibold">Garment details</h2>
             </div>
             <Field
-              label="ประเภทเสื้อผ้า"
+              label="Garment type"
               name="type"
               required
-              placeholder="เช่น เสื้อยืด เสื้อเชิ้ต กางเกงยีนส์"
+              placeholder="For example, T-shirt, shirt, jeans"
               error={action.error?.fields.type}
             />
             <Field
-              label="วัสดุ"
+              label="Material"
               name="material"
               required
-              placeholder="เช่น Cotton, Linen, Polyester"
+              placeholder="For example, Cotton, Linen, Polyester"
               error={action.error?.fields.material}
             />
             <Field
-              label="น้ำหนัก (กิโลกรัม)"
+              label="Weight (kilograms)"
               name="weight"
               type="number"
               required
@@ -221,31 +218,28 @@ export function NewGarmentPage() {
             <Feedback action={action} />
             <div className="flex justify-end gap-2 border-t pt-5">
               <Button asChild variant="outline">
-                <Link href="/garments">ยกเลิก</Link>
+                <Link href="/garments">Cancel</Link>
               </Button>
               <Submit busy={action.busy}>
-                บันทึกและประเมินต่อ <ArrowRight size={16} />
+                Save and assess <ArrowRight size={16} />
               </Submit>
             </div>
           </form>
         </Card>
         <div className="space-y-4">
           <Card>
-            <h2 className="mb-4 font-semibold">รับเข้าที่สาขา</h2>
-            <p>{session?.user.storeId}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              ผู้บันทึก: {session?.user.name}
-            </p>
+            <h2 className="mb-4 font-semibold">Recorded by</h2>
+            <p>{session?.user.name}</p>
             <p className="mt-5 text-xs text-muted-foreground">
-              ระบบกำหนดสาขาและผู้บันทึกจากบัญชี พร้อมสร้างรหัสและเวลารับเข้า
+              The server assigns the creator, the id, and the creation time.
             </p>
             <div className="mt-4">
-              <Badge tone="amber">P-STORE · ชั่วคราว</Badge>
+              <Badge tone="amber">Provisional</Badge>
             </div>
           </Card>
           <Notice>
-            บันทึกแล้วจะได้ร่างที่ยังไม่ประเมิน
-            คุณกลับมาทำต่อจากรายการเสื้อผ้าได้
+            Saving creates an unassessed draft. You can continue it from the
+            garment list.
           </Notice>
         </div>
       </div>
@@ -260,7 +254,7 @@ export function GarmentPage({
   created?: boolean;
 }) {
   const [message, setMessage] = useState(
-    created ? "บันทึกเสื้อผ้าจำลองสำเร็จ พร้อมประเมินสภาพต่อ" : "",
+    created ? "The garment was saved. You can assess its condition next." : "",
   );
   const resource = useResource(useCallback(() => getApi().garment(id), [id]));
   if (resource.error)
@@ -302,15 +296,38 @@ function GarmentEditor({
     [note, setNote] = useState(""),
     [confirmOpen, setConfirmOpen] = useState(false),
     [view, setView] = useState<string | null>(null),
+    [preview, setPreview] = useState(""),
     assess = useAction(),
     upload = useAction(),
     confirm = useAction();
   const locked = !!g.confirmedRoute,
-    required = mockPolicy.evidenceRequired(g.condition),
+    required = g.evidenceRequired,
     dirty = condition !== g.condition && condition !== "",
     missing = required && !g.evidence.length,
     override = route !== g.recommendation,
     canConfirm = can("returns.confirm") && !!g.condition && !missing && !dirty;
+  useEffect(() => {
+    if (!view) return;
+    let active = true;
+    let url = "";
+    void getApi()
+      .evidenceUrl(g.id, view)
+      .then((next) => {
+        if (!active) {
+          URL.revokeObjectURL(next);
+          return;
+        }
+        url = next;
+        setPreview(next);
+      })
+      .catch(() => {
+        if (active) setPreview("");
+      });
+    return () => {
+      active = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [view, g.id]);
   return (
     <>
       <Link
@@ -318,22 +335,22 @@ function GarmentEditor({
         className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground"
       >
         <ArrowLeft size={15} />
-        กลับรายการเสื้อผ้า
+        Back to garments
       </Link>
       <Heading
         title={g.id}
-        description={g.type + " · รับเข้า " + date(g.createdAt)}
+        description={g.type + " · Received " + date(g.createdAt)}
         action={<Status g={g} />}
       />
       <div className="mb-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <Badge tone="green">1 บันทึกข้อมูล ✓</Badge>
+        <Badge tone="green">1 Details saved ✓</Badge>
         <span>—</span>
         <Badge tone={g.condition ? "green" : "neutral"}>
-          2 ประเมินสภาพ {g.condition ? "✓" : ""}
+          2 Condition {g.condition ? "✓" : ""}
         </Badge>
         <span>—</span>
         <Badge tone={locked ? "green" : "neutral"}>
-          3 ยืนยันเส้นทาง {locked ? "✓" : ""}
+          3 Route {locked ? "✓" : ""}
         </Badge>
       </div>
       {locked && (
@@ -341,7 +358,7 @@ function GarmentEditor({
           <Notice tone="success">
             <span className="flex items-center gap-2">
               <LockKeyhole size={16} />
-              ยืนยันผลแล้ว · สภาพ หลักฐาน และเส้นทางเป็นข้อมูลอ่านอย่างเดียว
+              Confirmed. Condition, evidence, and route are read-only.
             </span>
           </Notice>
         </div>
@@ -351,16 +368,16 @@ function GarmentEditor({
           <Card>
             <h2 className="mb-5 flex items-center gap-2 font-semibold">
               <Shirt size={19} />
-              ข้อมูลเสื้อผ้า
+              Garment details
             </h2>
             <dl className="grid grid-cols-2 gap-5 text-sm">
               {[
-                ["ประเภท", g.type],
-                ["วัสดุ", g.material],
-                ["น้ำหนัก", g.weight + " กก."],
-                ["สาขา", g.storeId],
-                ["ผู้บันทึก", g.creatorId],
-                ["รหัสที่สร้าง", g.id],
+                ["Type", g.type],
+                ["Material", g.material],
+                ["Weight", g.weight + " kg"],
+                ["Recorded by", g.creatorId],
+                ["Created", date(g.createdAt)],
+                ["Record id", g.id],
               ].map(([k, v]) => (
                 <div key={k}>
                   <dt className="text-xs text-muted-foreground">{k}</dt>
@@ -371,8 +388,8 @@ function GarmentEditor({
           </Card>
           <Card>
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-semibold">ประเมินสภาพ</h2>
-              <Badge>{locked ? "อ่านอย่างเดียว" : "เลือก 1 สภาพ"}</Badge>
+              <h2 className="font-semibold">Assess condition</h2>
+              <Badge>{locked ? "Read-only" : "Choose one condition"}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {conditions.map((c) => (
@@ -391,15 +408,15 @@ function GarmentEditor({
                   <span className="mb-3 block text-xs font-semibold">{c}</span>
                   <span className="block text-sm">{conditionLabels[c]}</span>
                   <span className="mt-2 block text-[10px] text-muted-foreground">
-                    {mockPolicy.evidenceRequired(c)
-                      ? "ต้องมีรูปก่อนยืนยัน"
-                      : "รูปไม่บังคับ"}
+                    {c}
                   </span>
                 </button>
               ))}
             </div>
             <p className="my-4 text-xs text-muted-foreground">
-              บันทึกสภาพได้ก่อนแนบรูป · คำแนะนำใช้สภาพเท่านั้น
+              Condition can be saved before an image. GOOD and WORN do not
+              require evidence. DAMAGED and STAINED do, before confirmation.
+              The server calculates the recommendation from condition alone.
             </p>
             <Feedback action={assess} />
             {!locked && can("returns.assess") && (
@@ -409,11 +426,11 @@ function GarmentEditor({
                 onClick={() =>
                   void assess.run(async () => {
                     await getApi().assess(g.id, condition as Condition);
-                    reload("บันทึกการประเมินสภาพและคำแนะนำแล้ว");
-                  }, "บันทึกสภาพแล้ว")
+                    reload("Condition and recommendation were saved.");
+                  }, "Condition saved")
                 }
               >
-                {assess.busy ? "กำลังบันทึก…" : "บันทึกการประเมิน"}
+                {assess.busy ? "Saving…" : "Save assessment"}
               </Button>
             )}
           </Card>
@@ -421,16 +438,16 @@ function GarmentEditor({
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 font-semibold">
                 <Camera size={18} />
-                หลักฐานรูปภาพ
+                Image evidence
               </h2>
-              <Badge tone="amber">P-EVIDENCE · ชั่วคราว</Badge>
+              <Badge tone="amber">Provisional evidence rule</Badge>
             </div>
             <p className="mb-4 text-sm text-muted-foreground">
               {g.condition
                 ? required
-                  ? "สภาพนี้ต้องมีรูปอย่างน้อยหนึ่งรูปก่อนยืนยัน"
-                  : "สภาพนี้ไม่บังคับรูปภาพ"
-                : "GOOD / WORN: ไม่บังคับ · DAMAGED / STAINED: ต้องมีก่อนยืนยัน"}
+                  ? "This condition needs at least one image before confirmation."
+                  : "An image is optional for this condition."
+                : "GOOD and WORN: optional. DAMAGED and STAINED: required before confirmation."}
             </p>
             {!locked && can("returns.evidence") && (
               <label className="mb-4 block cursor-pointer rounded-lg border border-dashed bg-muted/30 p-6 text-center hover:bg-muted">
@@ -440,16 +457,16 @@ function GarmentEditor({
                 />
                 <span className="block text-sm font-medium">
                   {upload.busy
-                    ? "กำลังอ่านรูปจำลอง…"
-                    : "เลือกรูปเพื่อแนบหลักฐาน"}
+                    ? "Reading the image…"
+                    : "Choose an image to attach"}
                 </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  JPEG, PNG, WebP · ไม่เกิน 5 MB / รูป · เก็บในแท็บนี้
+                  JPEG, PNG, or WebP · up to 5 MB each
                 </span>
                 <input
                   type="file"
                   className="mt-4 block w-full text-xs"
-                  aria-label="เลือกรูปหลักฐาน"
+                  aria-label="Choose evidence image"
                   accept="image/jpeg,image/png,image/webp"
                   disabled={upload.busy}
                   onChange={(e) => {
@@ -457,7 +474,7 @@ function GarmentEditor({
                     if (f)
                       void upload.run(async () => {
                         await getApi().upload(g.id, f);
-                        reload("แนบหลักฐานจำลองแล้ว");
+                        reload("Evidence was attached.");
                       });
                     e.target.value = "";
                   }}
@@ -467,7 +484,7 @@ function GarmentEditor({
             <Feedback action={upload} />
             {!g.evidence.length ? (
               <p className="py-4 text-center text-xs text-muted-foreground">
-                ยังไม่มีหลักฐาน{missing ? " · ต้องแนบก่อนยืนยัน" : ""}
+                No evidence yet{missing ? " · required before confirmation" : ""}
               </p>
             ) : (
               <div className="space-y-2">
@@ -486,7 +503,7 @@ function GarmentEditor({
                         {Math.ceil(f.size / 1024)} KB · {date(f.createdAt)}
                       </span>
                     </span>
-                    <span className="text-xs text-primary">ดูรูป</span>
+                    <span className="text-xs text-primary">View</span>
                   </button>
                 ))}
               </div>
@@ -497,7 +514,7 @@ function GarmentEditor({
           <Card className="border-primary/20">
             <div className="mb-4 flex items-center gap-2 text-sm font-medium text-primary">
               <ArrowRight size={18} />
-              เส้นทางแนะนำ
+              Recommended route
             </div>
             {g.recommendation ? (
               <>
@@ -508,26 +525,26 @@ function GarmentEditor({
                   {g.recommendation}
                 </p>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  จากสภาพ {g.condition} · P-ROUTE (ชั่วคราว)
+                  From condition {g.condition} · provisional route rule
                 </p>
               </>
             ) : (
               <>
-                <h2 className="text-lg font-medium">ยังไม่มีคำแนะนำ</h2>
+                <h2 className="text-lg font-medium">No recommendation yet</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  บันทึกการประเมินสภาพก่อน
+                  Save a condition first.
                 </p>
               </>
             )}
             <p className="mt-4 border-t pt-4 text-xs text-muted-foreground">
-              คำแนะนำเป็นการกำหนดปลายทาง ยังไม่ใช่ผลขายต่อหรือรีไซเคิล
+              The recommendation chooses a destination. It is not a completed resale or recycling outcome.
             </p>
           </Card>
           {locked ? (
             <Card>
               <h2 className="mb-4 flex items-center gap-2 font-semibold">
                 <Check size={18} />
-                เส้นทางที่ยืนยัน
+                Confirmed route
               </h2>
               <p className="text-lg font-semibold">
                 {routeLabels[g.confirmedRoute!]}
@@ -536,22 +553,22 @@ function GarmentEditor({
                 {date(g.confirmedAt!)}
               </p>
               <p className="mt-5 text-xs text-muted-foreground">
-                เหตุผล / หมายเหตุ
+                Reason / note
               </p>
               <p className="mt-1 text-sm whitespace-pre-wrap">
-                {g.note || "ไม่มี · ยืนยันตามคำแนะนำ"}
+                {g.note || "None · confirmed as recommended"}
               </p>
             </Card>
           ) : (
             <Card>
-              <h2 className="mb-4 font-semibold">ยืนยันการตัดสินใจ</h2>
+              <h2 className="mb-4 font-semibold">Confirm the decision</h2>
               {!can("returns.confirm") ? (
-                <Notice>คุณไม่มีสิทธิ์ยืนยันเส้นทาง</Notice>
+                <Notice>You do not have permission to confirm a route.</Notice>
               ) : (
                 <>
                   <fieldset className="space-y-3">
                     <legend className="mb-3 text-xs text-muted-foreground">
-                      เลือกปลายทางสุดท้าย
+                      Choose the final destination
                     </legend>
                     {routes.map((r) => (
                       <label
@@ -574,7 +591,7 @@ function GarmentEditor({
                           {routeLabels[r]}
                           {g.recommendation === r && (
                             <small className="mt-1 block text-xs text-primary">
-                              ตรงกับคำแนะนำ
+                              Matches the recommendation
                             </small>
                           )}
                         </span>
@@ -584,7 +601,7 @@ function GarmentEditor({
                   {g.recommendation && override && (
                     <div className="mt-4">
                       <label htmlFor="override-note" className="label">
-                        เหตุผลในการเปลี่ยนเส้นทาง *
+                        Reason for changing the route *
                       </label>
                       <textarea
                         id="override-note"
@@ -597,18 +614,18 @@ function GarmentEditor({
                         id="note-help"
                         className="text-xs text-muted-foreground"
                       >
-                        ต้องมีข้อความที่ไม่ว่างหลังตัดช่องว่าง
+                        A non-blank note is required after trimming spaces.
                       </p>
                     </div>
                   )}
                   <div className="mt-4 text-xs text-muted-foreground">
                     {!g.condition
-                      ? "บันทึกสภาพก่อนยืนยัน"
+                      ? "Save a condition before confirming."
                       : dirty
-                        ? "มีสภาพที่ยังไม่บันทึก"
+                        ? "A condition change has not been saved."
                         : missing
-                          ? "แนบรูปที่จำเป็นก่อนยืนยัน"
-                          : "พร้อมตรวจสอบและยืนยัน"}
+                          ? "Attach the required image before confirming."
+                          : "Ready to review and confirm."}
                   </div>
                   <Button
                     className="mt-4 w-full"
@@ -618,11 +635,11 @@ function GarmentEditor({
                     onClick={() => setConfirmOpen(true)}
                   >
                     {override && g.recommendation
-                      ? "เปลี่ยนเส้นทางและยืนยัน"
-                      : "ยืนยันตามคำแนะนำ"}
+                      ? "Override and confirm"
+                      : "Confirm recommendation"}
                   </Button>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    ยืนยันแล้วจะเปลี่ยนสภาพ รูป หรือเส้นทางไม่ได้
+                    After confirmation, the condition, images, and route cannot be changed.
                   </p>
                 </>
               )}
@@ -633,22 +650,22 @@ function GarmentEditor({
       <Dialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="ยืนยันเส้นทางของเสื้อผ้า"
+        title="Confirm the garment route"
         description={g.id + " · " + g.type}
       >
         <div className="space-y-5">
           <p className="text-lg font-semibold">{route && routeLabels[route]}</p>
           {override && (
-            <p className="text-sm whitespace-pre-wrap">เหตุผล: {note.trim()}</p>
+            <p className="text-sm whitespace-pre-wrap">Reason: {note.trim()}</p>
           )}
           <Notice>
-            ผลจำลองจะถูกบันทึกและแสดงเป็นอ่านอย่างเดียว
-            ไม่สามารถยืนยันซ้ำหรือเปิดแก้ได้
+            The decision will be saved as read-only. It cannot be confirmed
+            again or reopened.
           </Notice>
           <Feedback action={confirm} />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>
-              กลับไปตรวจสอบ
+              Back to review
             </Button>
             <Button
               disabled={confirm.busy}
@@ -656,11 +673,11 @@ function GarmentEditor({
                 void confirm.run(async () => {
                   await getApi().confirm(g.id, route!, note);
                   setConfirmOpen(false);
-                  reload("ยืนยันเส้นทางจำลองแล้ว");
+                  reload("The route was confirmed.");
                 })
               }
             >
-              {confirm.busy ? "กำลังยืนยัน…" : "ยืนยันผลจำลอง"}
+              {confirm.busy ? "Confirming…" : "Confirm decision"}
             </Button>
           </div>
         </div>
@@ -670,16 +687,15 @@ function GarmentEditor({
         onOpenChange={(o) => {
           if (!o) setView(null);
         }}
-        title="หลักฐานจำลอง"
+        title="Evidence"
         description={g.evidence.find((f) => f.id === view)?.filename}
       >
-        {view && (
-          <Image
-            unoptimized
-            width={800}
-            height={600}
-            src={g.evidence.find((f) => f.id === view)!.preview}
-            alt={"หลักฐาน " + g.evidence.find((f) => f.id === view)?.filename}
+        {view && preview && (
+          // Evidence bytes come from the authenticated API, so they are not a remote image URL.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={preview}
+            alt={g.evidence.find((f) => f.id === view)?.filename || "Evidence"}
             className="max-h-[60vh] w-full rounded-lg object-contain"
           />
         )}

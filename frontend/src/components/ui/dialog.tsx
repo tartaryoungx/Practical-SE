@@ -34,12 +34,12 @@ export function Dialog({
             {title}
           </DialogPrimitive.Title>
           <DialogPrimitive.Description className="mt-2 mb-6 text-sm text-muted-foreground">
-            {description || "ตรวจสอบข้อมูลก่อนบันทึกการเปลี่ยนแปลง"}
+            {description || "Review the details before saving."}
           </DialogPrimitive.Description>
           {children}
           <DialogPrimitive.Close
             className="absolute top-4 right-4 rounded p-1 hover:bg-muted"
-            aria-label="ปิดหน้าต่าง"
+            aria-label="Close"
           >
             <X size={18} />
           </DialogPrimitive.Close>

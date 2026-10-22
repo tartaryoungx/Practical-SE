@@ -23,32 +23,12 @@ import { Loading, Badge } from "./ui/shared";
 import { Dialog } from "./ui/dialog";
 import { cn } from "@/lib/utils";
 const links = [
-  {
-    href: "/garments",
-    label: "เสื้อผ้ารับคืน",
-    icon: Shirt,
-    permission: "returns.read",
-  },
-  {
-    href: "/users",
-    label: "จัดการผู้ใช้งาน",
-    icon: Users,
-    permission: "users.read",
-  },
-  {
-    href: "/permissions",
-    label: "ตั้งค่าสิทธิ์",
-    icon: ShieldCheck,
-    permission: "access.read",
-  },
-  {
-    href: "/access",
-    label: "ทบทวนการเข้าถึง",
-    icon: ShieldCheck,
-    permission: "access.read",
-  },
-  { href: "/profile", label: "โปรไฟล์ของฉัน", icon: UserRound },
-  { href: "/change-password", label: "เปลี่ยนรหัสผ่าน", icon: KeyRound },
+  { href: "/garments", label: "Returned garments", icon: Shirt, permission: "returns.read" },
+  { href: "/users", label: "User management", icon: Users, permission: "users.read" },
+  { href: "/permissions", label: "Permissions", icon: ShieldCheck, permission: "access.read" },
+  { href: "/access", label: "Access review", icon: ShieldCheck, permission: "access.read" },
+  { href: "/profile", label: "My profile", icon: UserRound },
+  { href: "/change-password", label: "Change password", icon: KeyRound },
 ];
 export function AppShell({ children }: { children: ReactNode }) {
   const { session, ready, can, refresh } = useSession(),
@@ -70,18 +50,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Leaf size={21} />
         </span>
         {!collapsed && (
-          <span>
-            Garment Returns
-            <small className="block text-[10px] tracking-widest text-muted-foreground">
-              SPRINT 1
-            </small>
-          </span>
+          <span>Garment Returns</span>
         )}
       </Link>
       <div className="mb-3 text-[10px] tracking-widest text-muted-foreground">
         {collapsed ? "MENU" : "WORKSPACE"}
       </div>
-      <nav className="space-y-1" aria-label="เมนูหลัก">
+      <nav className="space-y-1" aria-label="Main">
         {links
           .filter((l) => !l.permission || can(l.permission as Permission))
           .map((l) => (
@@ -115,7 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Button
           variant="ghost"
           className="w-full justify-start"
-          title="ออกจากระบบ"
+          title="Sign out"
           onClick={async () => {
             await getApi().logout();
             await refresh();
@@ -123,7 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }}
         >
           <LogOut size={17} />
-          {!collapsed && "ออกจากระบบ"}
+          {!collapsed && "Sign out"}
         </Button>
       </div>
     </>
@@ -134,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         href="#content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:p-3"
       >
-        ข้ามไปเนื้อหา
+        Skip to content
       </a>
       <aside
         className={cn(
@@ -147,11 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-[11px] text-amber-900">
           <span className="flex items-center gap-2">
-            <FlaskConical size={14} /> FRONTEND PROTOTYPE · บัญชี / ข้อมูล /
-            อัปโหลดจำลอง
-          </span>
-          <span className="hidden sm:block">
-            เก็บในแท็บนี้ · ไม่ใช่ระบบจริง
+            <FlaskConical size={14} /> Signed-in workspace
           </span>
         </div>
         <header className="flex h-16 items-center justify-between border-b bg-white px-5 md:px-8">
@@ -160,7 +131,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               variant="ghost"
               size="icon"
               className="hidden md:inline-flex"
-              aria-label={collapsed ? "ขยายเมนู" : "ย่อเมนู"}
+              aria-label={collapsed ? "Expand menu" : "Collapse menu"}
               onClick={() => setCollapsed(!collapsed)}
             >
               {collapsed ? (
@@ -173,7 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               variant="ghost"
               size="icon"
               className="md:hidden"
-              aria-label="เปิดเมนู"
+              aria-label="Open menu"
               onClick={() => {
                 setCollapsed(false);
                 setMobile(true);
@@ -184,10 +155,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="text-sm text-muted-foreground">
               Workspace <span className="mx-2 text-border">/</span>{" "}
               {links.find((l) => path.startsWith(l.href))?.label ||
-                "เสื้อผ้ารับคืน"}
+                "Returned garments"}
             </span>
           </div>
-          <Badge>{session.user.storeId || session.user.role}</Badge>
+          <Badge>{session.user.role}</Badge>
         </header>
         <main
           id="content"
@@ -199,8 +170,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Dialog
         open={mobile}
         onOpenChange={setMobile}
-        title="เมนู"
-        description="เลือกหน้าที่ต้องการใช้งาน"
+        title="Menu"
+        description="Choose a page"
       >
         <div className="flex min-h-80 flex-col">{nav}</div>
       </Dialog>

@@ -181,7 +181,7 @@ export function Loading() {
       className="flex items-center justify-center gap-3 p-16 text-sm text-muted-foreground"
     >
       <LoaderCircle size={19} className="animate-spin" />
-      กำลังโหลดข้อมูลจำลอง…
+      Loading…
     </div>
   );
 }
@@ -216,7 +216,7 @@ export function useAction() {
       setError(
         e instanceof ApiError
           ? e
-          : new ApiError("ERROR", "ทำรายการไม่สำเร็จ กรุณาลองใหม่"),
+          : new ApiError("ERROR", "The request could not be completed. Try again."),
       );
       return undefined;
     } finally {
@@ -244,7 +244,7 @@ export function Feedback({ action }: { action: ReturnType<typeof useAction> }) {
 }
 export function Submit({
   busy,
-  children = "บันทึก",
+  children = "Save",
 }: {
   busy: boolean;
   children?: ReactNode;
@@ -252,7 +252,7 @@ export function Submit({
   return (
     <Button type="submit" disabled={busy}>
       {busy && <LoaderCircle className="animate-spin" size={16} />}{" "}
-      {busy ? "กำลังบันทึก…" : children}
+      {busy ? "Saving…" : children}
     </Button>
   );
 }
@@ -292,7 +292,7 @@ export function ResourceError({
     <div className="space-y-4">
       <Notice tone="error">{error}</Notice>
       <Button variant="outline" onClick={retry}>
-        ลองใหม่
+        Try again
       </Button>
     </div>
   );
@@ -305,7 +305,7 @@ export function values(event: FormEvent<HTMLFormElement>) {
   >;
 }
 export function date(value: string) {
-  return new Intl.DateTimeFormat("th-TH", {
+  return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));

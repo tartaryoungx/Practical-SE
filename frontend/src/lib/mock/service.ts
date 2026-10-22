@@ -5,13 +5,12 @@ import {
   routes,
   permissions,
   type User,
-  type Role,
   type Permission,
   type Garment,
   type Condition,
   type Route,
 } from "../types";
-import { seed, stores, type MockState } from "./seed";
+import { seed, type MockState } from "./seed";
 export const mockPolicy = {
   recommendation: (c: Condition): Route =>
     c === "GOOD" ? "DIRECT_RESALE_CANDIDATE" : "THIRD_PARTY_CONTRACTOR",
@@ -29,7 +28,7 @@ export function effective(
     (key.startsWith("users.") || key.startsWith("access.")
       ? user.role === "ADMIN"
       : key.startsWith("returns.")
-        ? user.role === "STORE_STAFF" && !!user.storeId
+        ? true
         : false)
   );
 }
@@ -42,8 +41,8 @@ function fail(
 }
 function password(value: string) {
   if (value.length < 8 || value.length > 128)
-    fail("VALIDATION", "รหัสผ่านต้องมี 8–128 ตัวอักษร", {
-      password: "ใช้รหัสผ่าน 8–128 ตัวอักษร",
+    fail("VALIDATION", "Password must be 8–128 characters.", {
+      password: "Use 8–128 characters.",
     });
 }
 function profile(
@@ -54,16 +53,16 @@ function profile(
   const name = input.name.trim(),
     email = input.email.trim().toLowerCase();
   if (!name || name.length > 100)
-    fail("VALIDATION", "กรุณาระบุชื่อไม่เกิน 100 ตัวอักษร", {
-      name: "กรุณาระบุชื่อไม่เกิน 100 ตัวอักษร",
+    fail("VALIDATION", "Enter a name of at most 100 characters.", {
+      name: "Enter a name of at most 100 characters.",
     });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    fail("VALIDATION", "อีเมลไม่ถูกต้อง", {
-      email: "กรุณาระบุอีเมลที่ถูกต้อง",
+    fail("VALIDATION", "The email address is invalid.", {
+      email: "Enter a valid email address.",
     });
   if (state.users.some((u) => u.id !== id && u.email === email))
-    fail("CONFLICT", "อีเมลนี้มีบัญชีอยู่แล้ว", {
-      email: "อีเมลนี้ถูกใช้งานแล้ว",
+    fail("CONFLICT", "An account with this email already exists.", {
+      email: "This email is already in use.",
     });
   return { name, email };
 }
@@ -91,33 +90,25 @@ export function createMockApi(
     } catch (e) {
       state = before;
       if (e instanceof ApiError) throw e;
-      fail("STORAGE", "พื้นที่เก็บข้อมูลจำลองไม่พร้อมใช้งาน กรุณาลองใหม่");
+      fail("STORAGE", "Storage is unavailable. Try again.");
     }
   }
   function me() {
     const u = state.users.find((u) => u.id === state.sessionId && u.is_active);
-    if (!u) fail("UNAUTHENTICATED", "เซสชันจำลองสิ้นสุดแล้ว กรุณาเข้าสู่ระบบ");
+    if (!u) fail("UNAUTHENTICATED", "The session has ended. Sign in again.");
     return u;
   }
   function permit(p: Permission) {
     const u = me();
     if (!effective(u, p, state.grants))
-      fail("FORBIDDEN", "บัญชีนี้ไม่มีสิทธิ์ทำรายการนี้");
+      fail("FORBIDDEN", "You do not have access to this resource.");
     return u;
   }
   function user(id: string) {
     return (
       state.users.find((u) => u.id === id) ??
-      fail("NOT_FOUND", "ไม่พบบัญชีผู้ใช้")
+      fail("NOT_FOUND", "The account was not found.")
     );
-  }
-  function store(role: Role, id: string | null) {
-    if (!roles.includes(role)) fail("VALIDATION", "บทบาทไม่ถูกต้อง");
-    if (role === "STORE_STAFF" && !stores.some((s) => s.id === id))
-      fail("VALIDATION", "เลือกสาขาสำหรับ Staff", {
-        storeId: "กรุณาเลือกสาขา",
-      });
-    return role === "STORE_STAFF" ? id : null;
   }
   function protectAdmin(u: User, remove: boolean) {
     if (
@@ -126,18 +117,16 @@ export function createMockApi(
       u.is_active &&
       state.users.filter((a) => a.role === "ADMIN" && a.is_active).length === 1
     )
-      fail("LAST_ADMIN", "ต้องเหลือผู้ดูแลระบบที่ใช้งานได้อย่างน้อยหนึ่งคน");
+      fail("LAST_ADMIN", "At least one active administrator must remain.");
   }
   function garment(id: string, p: Permission, write = false) {
-    const u = permit(p);
-    const g = state.garments.find(
-      (g) => g.id === id && g.storeId === u.storeId,
-    );
-    if (!g) fail("NOT_FOUND", "ไม่พบเสื้อผ้าที่คุณเข้าถึงได้");
+    permit(p);
+    const g = state.garments.find((g) => g.id === id);
+    if (!g) fail("NOT_FOUND", "The garment was not found.");
     if (write && g.confirmedRoute)
       fail(
         "READ_ONLY",
-        "ยืนยันแล้ว ไม่สามารถเปลี่ยนสภาพ หลักฐาน หรือเส้นทางได้",
+        "This garment is confirmed and can no longer be changed.",
       );
     return g;
   }
@@ -160,7 +149,7 @@ export function createMockApi(
         if (!u || !u.is_active || state.passwords[u.id] !== pass)
           fail(
             "CREDENTIALS",
-            "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีไม่พร้อมใช้งาน",
+            "The email or password is incorrect, or the account is unavailable.",
           );
         state.sessionId = u.id;
         return { user: u, grants: state.grants };
@@ -173,8 +162,8 @@ export function createMockApi(
       run(() => {
         const u = me();
         if (state.passwords[u.id] !== current)
-          fail("VALIDATION", "รหัสผ่านปัจจุบันไม่ถูกต้อง", {
-            current: "รหัสผ่านปัจจุบันไม่ถูกต้อง",
+          fail("VALIDATION", "The current password is incorrect.", {
+            current: "The current password is incorrect.",
           });
         password(next);
         state.passwords[u.id] = next;
@@ -185,7 +174,7 @@ export function createMockApi(
         const t = state.tokens.find(
           (t) => t.token === token && !t.used && t.expires > Date.now(),
         );
-        if (!t) fail("TOKEN", "ลิงก์ไม่ถูกต้อง หมดอายุ หรือถูกใช้แล้ว");
+        if (!t) fail("TOKEN", "The reset link is invalid, expired, or already used.");
         password(next);
         t.used = true;
         state.passwords[t.userId] = next;
@@ -196,27 +185,15 @@ export function createMockApi(
         permit("users.read");
         return state.users;
       }),
-    stores: () =>
-      run(() => {
-        const u = me();
-        if (
-          !effective(u, "users.create", state.grants) &&
-          !effective(u, "users.role", state.grants)
-        )
-          fail("FORBIDDEN", "ไม่มีสิทธิ์เลือกสาขา");
-        return stores;
-      }),
     createUser: (input: CreateUser) =>
       run(() => {
         permit("users.create");
         const fields = profile(input, state);
         password(input.password);
-        const storeId = store(input.role, input.storeId);
         const u: User = {
           id: crypto.randomUUID(),
           ...fields,
           role: input.role,
-          storeId,
           is_active: true,
         };
         state.users.push(u);
@@ -227,7 +204,7 @@ export function createMockApi(
       run(() => {
         permit("users.edit");
         if (Object.keys(input).some((k) => !["name", "email"].includes(k)))
-          fail("VALIDATION", "แก้ไขได้เฉพาะชื่อและอีเมล");
+          fail("VALIDATION", "Only name and email can be edited here.");
         const u = user(id);
         Object.assign(u, profile(input, state, id));
         return u;
@@ -237,24 +214,17 @@ export function createMockApi(
         const actor = permit("users.status"),
           u = user(id);
         if (actor.id === id && !active)
-          fail("SELF_DISABLE", "ไม่สามารถปิดบัญชีของตนเอง");
+          fail("SELF_DISABLE", "You cannot disable your own account.");
         protectAdmin(u, !active);
         u.is_active = active;
         if (!active) invalidate(id);
         return u;
       }, true),
-    setRole: (id, role, storeId) =>
+    setRole: (id, role) =>
       run(() => {
         permit("users.role");
         const u = user(id);
         protectAdmin(u, role !== "ADMIN");
-        if (
-          u.role === "STORE_STAFF" &&
-          role === "STORE_STAFF" &&
-          u.storeId !== storeId
-        )
-          fail("STORE_TRANSFER", "การย้ายสาขาอยู่นอก Sprint 1");
-        u.storeId = store(role, storeId);
         u.role = role;
         return u;
       }, true),
@@ -262,17 +232,18 @@ export function createMockApi(
       run(() => {
         const actor = permit("users.reset");
         if (actor.id === id)
-          fail("SELF_RESET", "ใช้หน้าเปลี่ยนรหัสผ่านสำหรับบัญชีตนเอง");
+          fail("SELF_RESET", "Use Change Password for your own account.");
         user(id);
         password(next);
         state.passwords[id] = next;
         invalidate(id);
+        return null;
       }, true),
     issueReset: (id) =>
       run(() => {
         const actor = permit("users.reset");
         if (actor.id === id)
-          fail("SELF_RESET", "ใช้หน้าเปลี่ยนรหัสผ่านสำหรับบัญชีตนเอง");
+          fail("SELF_RESET", "Use Change Password for your own account.");
         user(id);
         const token = crypto.randomUUID();
         state.tokens.push({
@@ -295,19 +266,14 @@ export function createMockApi(
           !roles.includes(role) ||
           keys.some((k) => !permissions.some((p) => p.key === k))
         )
-          fail("VALIDATION", "บทบาทหรือสิทธิ์ไม่ถูกต้อง");
-        if (
-          role !== "STORE_STAFF" &&
-          keys.some((k) => k.startsWith("returns."))
-        )
-          fail("UNRESOLVED", "U-ACCESS: สิทธิ์ Return ข้ามบทบาทยังไม่สรุป");
+          fail("VALIDATION", "The role or permission is invalid.");
         if (
           role !== "ADMIN" &&
           keys.some((k) => k.startsWith("users.") || k.startsWith("access."))
         )
           fail(
             "MANDATORY",
-            "BR-04: งานจัดการบัญชีและสิทธิ์เป็น ADMIN เท่านั้น",
+            "Account and permission administration is ADMIN-only.",
           );
         if (
           role === "ADMIN" &&
@@ -315,7 +281,7 @@ export function createMockApi(
         )
           fail(
             "LAST_ADMIN",
-            "ต้องรักษาสิทธิ์อ่านและแก้ไขการตั้งค่าสิทธิ์ของ ADMIN",
+            "Administrators must keep access to read and edit permissions.",
           );
         state.grants[role] = [...new Set(keys)];
         return state.grants;
@@ -323,9 +289,10 @@ export function createMockApi(
     garments: () =>
       run(() => {
         const u = permit("returns.read");
-        return state.garments
-          .filter((g) => g.storeId === u.storeId)
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        void u;
+        return state.garments.sort((a, b) =>
+          b.createdAt.localeCompare(a.createdAt),
+        );
       }),
     garment: (id) => run(() => garment(id, "returns.read")),
     createGarment: (input) =>
@@ -336,23 +303,22 @@ export function createMockApi(
             (k) => !["type", "material", "weight"].includes(k),
           )
         )
-          fail("VALIDATION", "สาขาและผู้บันทึกกำหนดจากบัญชี");
+          fail("VALIDATION", "The creator is taken from the signed-in account.");
         if (!input.type.trim())
-          fail("VALIDATION", "กรุณาระบุประเภทเสื้อผ้า", {
-            type: "กรุณาระบุประเภท",
+          fail("VALIDATION", "Enter the garment type.", {
+            type: "Enter the garment type.",
           });
         if (!input.material.trim())
-          fail("VALIDATION", "กรุณาระบุวัสดุ", { material: "กรุณาระบุวัสดุ" });
+          fail("VALIDATION", "Enter the material.", { material: "Enter the material." });
         if (!Number.isFinite(input.weight) || input.weight <= 0)
-          fail("VALIDATION", "น้ำหนักต้องมากกว่า 0 กิโลกรัม", {
-            weight: "ใช้น้ำหนักมากกว่า 0 กิโลกรัม",
+          fail("VALIDATION", "Weight must be greater than 0 kilograms.", {
+            weight: "Use a weight greater than 0 kilograms.",
           });
         const g: Garment = {
           id: "GR-" + String(state.garments.length + 1).padStart(4, "0"),
           type: input.type.trim(),
           material: input.material.trim(),
           weight: input.weight,
-          storeId: u.storeId!,
           creatorId: u.id,
           createdAt: new Date().toISOString(),
           condition: null,
@@ -361,6 +327,7 @@ export function createMockApi(
           note: "",
           confirmedAt: null,
           evidence: [],
+          evidenceRequired: false,
         };
         state.garments.push(g);
         return g;
@@ -369,9 +336,10 @@ export function createMockApi(
       run(() => {
         const g = garment(id, "returns.assess", true);
         if (!conditions.includes(c))
-          fail("VALIDATION", "สภาพเสื้อผ้าไม่ถูกต้อง");
+          fail("VALIDATION", "Choose a valid condition.");
         g.condition = c;
         g.recommendation = mockPolicy.recommendation(c);
+        g.evidenceRequired = mockPolicy.evidenceRequired(c);
         return g;
       }, true),
     upload: async (id, file) => {
@@ -381,7 +349,7 @@ export function createMockApi(
         file.size > mockPolicy.uploadLimit ||
         !file.size
       )
-        fail("UPLOAD", "เลือก JPEG, PNG หรือ WebP ขนาดไม่เกิน 5 MB");
+        fail("UPLOAD", "Choose a JPEG, PNG, or WebP image up to 5 MB.");
       const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
       const valid =
         file.type === "image/png"
@@ -393,13 +361,7 @@ export function createMockApi(
             ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
             : String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
               String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
-      if (!valid) fail("UPLOAD", "เนื้อหาไฟล์ไม่ตรงกับรูปภาพที่รองรับ");
-      const preview = await new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = () => reject(new ApiError("UPLOAD", "อ่านรูปภาพไม่สำเร็จ"));
-        r.readAsDataURL(file);
-      });
+      if (!valid) fail("UPLOAD", "The file content is not a supported image.");
       return run(() => {
         const g = garment(id, "returns.evidence", true);
         g.evidence.push({
@@ -409,22 +371,28 @@ export function createMockApi(
           size: file.size,
           uploaderId: me().id,
           createdAt: new Date().toISOString(),
-          preview,
         });
         return g;
       }, true);
     },
+    evidenceUrl: (garmentId, evidenceId) =>
+      run(() => {
+        const g = garment(garmentId, "returns.read");
+        if (!g.evidence.some((item) => item.id === evidenceId))
+          fail("NOT_FOUND", "The evidence file was not found.");
+        return "data:image/png;base64,";
+      }),
     confirm: (id, route, note) =>
       run(() => {
         const g = garment(id, "returns.confirm", true);
         if (!g.condition || !g.recommendation)
-          fail("ASSESSMENT", "บันทึกการประเมินสภาพก่อนยืนยัน");
-        if (!routes.includes(route)) fail("VALIDATION", "ปลายทางไม่ถูกต้อง");
+          fail("ASSESSMENT", "Save a condition before confirming the route.");
+        if (!routes.includes(route)) fail("VALIDATION", "Choose a valid route.");
         if (mockPolicy.evidenceRequired(g.condition) && !g.evidence.length)
-          fail("EVIDENCE", "สภาพนี้ต้องมีหลักฐานรูปภาพก่อนยืนยัน");
+          fail("EVIDENCE", "This condition requires an image before confirmation.");
         if (route !== g.recommendation && !note.trim())
-          fail("VALIDATION", "ระบุเหตุผลเมื่อเปลี่ยนจากคำแนะนำ", {
-            note: "ต้องมีเหตุผลที่ไม่ว่าง",
+          fail("VALIDATION", "Enter a reason when the route differs from the recommendation.", {
+            note: "A non-blank reason is required.",
           });
         g.confirmedRoute = route;
         g.note = note.trim();

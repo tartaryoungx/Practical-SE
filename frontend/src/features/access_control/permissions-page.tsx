@@ -52,17 +52,18 @@ function PermissionsEditor({
   return (
     <>
       <Heading
-        title={readOnly ? "ทบทวนการเข้าถึง" : "บทบาทและสิทธิ์"}
+        title={readOnly ? "Access review" : "Roles and Permissions"}
         description={
           readOnly
-            ? "สิทธิ์ที่ตั้งค่าไว้และข้อจำกัดที่มีผลจริง แสดงแยกตามบทบาท"
-            : "กำหนดสิทธิ์การทำงาน การแก้ไขมีผลในการทำรายการครั้งถัดไป"
+            ? "Configured permissions and the restrictions that actually apply, grouped by role."
+            : "Configure access permissions. Changes take effect on the next request."
         }
       />
       <div className="mb-6">
         <Notice>
-          U-ACCESS ยังไม่สรุป: ไม่เปิดให้ ADMIN / HEAD / CONTRACTOR รับสิทธิ์
-          Return ข้ามบทบาท · การจัดการบัญชีเป็น ADMIN เท่านั้น (BR-04)
+          Account administration stays with ADMIN. A granted Return permission
+          works for any role. Reserved Batch, Outcome, Validation, and Report
+          keys do not open a workflow.
         </Notice>
       </div>
       <div className="mb-6 flex flex-wrap gap-2">
@@ -81,44 +82,41 @@ function PermissionsEditor({
         <div>
           <h2 className="font-semibold">{role}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            ทุกบทบาทที่ใช้งานได้มี Login / Profile / Password
-            โดยไม่ขึ้นกับตารางนี้
+            All active roles have access to Login, Profile, and Password
+            independently of this permission matrix.
           </p>
         </div>
         <Badge>
-          {readOnly ? "อ่านอย่างเดียว" : "ค่าที่ตั้งไว้ × การเข้าถึงจริง"}
+          {readOnly ? "Read-only" : "Assigned × effective access"}
         </Badge>
       </div>
       <div className="table-wrap">
         <table className="min-w-[670px]">
           <thead>
             <tr>
-              <th>หมวด / ความสามารถ</th>
-              <th>กำหนดสิทธิ์</th>
-              <th>ผลการเข้าถึง</th>
+              <th>Group / capability</th>
+              <th>Assigned</th>
+              <th>Effective access</th>
             </tr>
           </thead>
           <tbody>
             {permissions.map((p) => {
               const reserved = p.key.endsWith(".reserved"),
-                blocked =
-                  p.group === "Return"
-                    ? role !== "STORE_STAFF"
-                    : p.group === "Account"
-                      ? role !== "ADMIN"
-                      : false,
+                adminOnly = p.group === "Account" && role !== "ADMIN",
+                locked =
+                  role === "ADMIN" &&
+                  (p.key === "access.read" || p.key === "access.write"),
                 checked = (readOnly ? grants[role] : draft).includes(p.key),
+                effective = checked && !reserved && !adminOnly,
                 reason = reserved
-                  ? "Reserved · ยังไม่มี workflow"
-                  : blocked
-                    ? p.group === "Return"
-                      ? "ยังไม่สรุป · U-ACCESS"
-                      : "ไม่ได้ · ADMIN เท่านั้น"
-                    : checked
-                      ? p.group === "Return"
-                        ? "ได้ · เฉพาะสาขาที่กำหนด"
-                        : "ได้"
-                      : "ไม่ได้ · ยังไม่ให้สิทธิ์";
+                  ? "Reserved · no workflow"
+                  : adminOnly
+                    ? checked
+                      ? "Assigned · blocked, ADMIN only"
+                      : "Not granted · ADMIN only"
+                    : effective
+                      ? "Allowed"
+                      : "Not granted";
               return (
                 <tr key={p.key}>
                   <td>
@@ -130,7 +128,7 @@ function PermissionsEditor({
                   <td>
                     {readOnly ? (
                       <Badge tone={checked ? "green" : "neutral"}>
-                        {checked ? "ให้สิทธิ์" : "ไม่ให้สิทธิ์"}
+                        {checked ? "Granted" : "Not granted"}
                       </Badge>
                     ) : (
                       <input
@@ -139,7 +137,7 @@ function PermissionsEditor({
                         className="size-4 accent-primary"
                         checked={checked}
                         disabled={
-                          blocked || !can("access.write") || action.busy
+                          locked || !can("access.write") || action.busy
                         }
                         onChange={(e) =>
                           setDraft((v) =>
@@ -154,13 +152,11 @@ function PermissionsEditor({
                   <td>
                     <Badge
                       tone={
-                        blocked && p.group === "Return"
-                          ? "violet"
-                          : reserved
-                            ? "neutral"
-                            : checked && !blocked
-                              ? "green"
-                              : "neutral"
+                        reserved || adminOnly
+                          ? "neutral"
+                          : effective
+                            ? "green"
+                            : "neutral"
                       }
                     >
                       {reason}
@@ -178,8 +174,8 @@ function PermissionsEditor({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <span className="text-xs text-muted-foreground">
               {dirty
-                ? "มีการเปลี่ยนแปลงที่ยังไม่บันทึก · บันทึกหรือคืนค่าก่อนเปลี่ยนบทบาท"
-                : "ค่าตรงกับข้อมูลจำลองที่บันทึกไว้"}
+                ? "Unsaved changes. Save or discard them before switching roles."
+                : "Matches the saved permissions."}
             </span>
             <div className="flex gap-2">
               <Button
@@ -190,7 +186,7 @@ function PermissionsEditor({
                   action.clear();
                 }}
               >
-                คืนค่าก่อนแก้
+                Discard changes
               </Button>
               <Button
                 disabled={!dirty || action.busy || !can("access.write")}
@@ -200,23 +196,23 @@ function PermissionsEditor({
                     setGrants(saved);
                     setDraft(saved[role]);
                     await refresh();
-                  }, "บันทึกสิทธิ์จำลองแล้ว มีผลในการทำรายการครั้งถัดไป")
+                  }, "Permissions saved. They apply on the next request.")
                 }
               >
-                {action.busy ? "กำลังบันทึก…" : "บันทึกสิทธิ์"}
+                {action.busy ? "Saving…" : "Save permissions"}
               </Button>
             </div>
           </div>
         )}
         <Card>
           <h3 className="mb-2 text-sm font-semibold">
-            สิทธิ์ที่ตั้งค่าไว้ ≠ การข้ามข้อจำกัด
+            Assigned permissions are not the same as effective access.
           </h3>
           <p className="text-xs leading-6 text-muted-foreground">
-            การเข้าถึงจริงต้องผ่านสิทธิ์ปัจจุบัน ข้อจำกัด ADMIN และ P-STORE
-            (ชั่วคราว) ไม่มี ADMIN bypass ส่วน Batch / Outcome / Validation /
-            Report มีเพียงนิยามสิทธิ์สำรอง
-            ยังไม่มีหน้าจอหรือการทำงานของโมดูลเหล่านั้น
+            Effective access follows the saved grants, the ADMIN-only
+            administration rule, and the reserved-module labels. There is no
+            implicit administrator bypass for garment work. Batch, Outcome,
+            Validation, and Report have definitions only.
           </p>
         </Card>
       </div>
