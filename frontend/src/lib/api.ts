@@ -1,5 +1,5 @@
 import { ApiError, type Api } from "./api-contract";
-import type { Garment, Session } from "./types";
+import type { BatchDetail, Garment, Monitoring, Session } from "./types";
 
 function apiBase() {
   return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -37,6 +37,15 @@ async function request<T>(path: string, init: RequestInit = {}, json = true): Pr
     throw new ApiError(error.code || "HTTP_ERROR", error.message || "The request failed.", fields);
   }
   return payload as T;
+}
+
+function queryString(params: object) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `?${text}` : "";
 }
 
 function httpApi(): Api {
@@ -122,6 +131,60 @@ function httpApi(): Api {
         method: "POST",
         body: JSON.stringify({ route, note }),
       }),
+    stores: () => request("/stores"),
+    contractors: () => request("/contractors"),
+    assignees: () => request("/assignees"),
+    batches: (query = {}) => request(`/batches${queryString(query)}`),
+    monitoring: (query = {}) => request<Monitoring>(`/monitoring${queryString(query)}`),
+    batch: (id) => request(`/batches/${id}`),
+    createBatch: (input) => request("/batches", { method: "POST", body: JSON.stringify(input) }),
+    removeBatchItem: (batchId, garmentId) =>
+      request(`/batches/${batchId}/items/${garmentId}`, { method: "DELETE" }),
+    confirmBatch: (id) => request(`/batches/${id}/confirm`, { method: "POST" }),
+    pickupBatch: (id, pickedUpAt) =>
+      request(`/batches/${id}/pickup`, {
+        method: "POST",
+        body: JSON.stringify(pickedUpAt ? { pickedUpAt } : {}),
+      }),
+    receiveBatch: (id) => request(`/batches/${id}/receive`, { method: "POST" }),
+    saveSorting: (id, input) =>
+      request(`/batches/${id}/sorting`, { method: "PUT", body: JSON.stringify(input) }),
+    submitSorting: (id) => request(`/batches/${id}/sorting/submit`, { method: "POST" }),
+    saveOutcomes: (id, items) =>
+      request(`/batches/${id}/outcomes`, { method: "PUT", body: JSON.stringify({ items }) }),
+    uploadOutcomeEvidence: (id, file) => {
+      const body = new FormData();
+      body.append("file", file);
+      return request<BatchDetail>(`/batches/${id}/outcomes/evidence`, { method: "POST", body }, false);
+    },
+    async outcomeEvidenceUrl(batchId, evidenceId) {
+      const response = await fetch(
+        `${apiBase()}/batches/${batchId}/outcomes/evidence/${evidenceId}`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new ApiError("NOT_FOUND", "The evidence file could not be opened.");
+      return URL.createObjectURL(await response.blob());
+    },
+    submitOutcomes: (id) => request(`/batches/${id}/outcomes/submit`, { method: "POST" }),
+    validation: (id) => request(`/batches/${id}/validation`),
+    decideValidation: (id, decision, reason) =>
+      request(`/batches/${id}/validation`, {
+        method: "POST",
+        body: JSON.stringify({ decision, reason }),
+      }),
+    issues: () => request("/issues"),
+    myIssues: () => request("/issues/mine"),
+    issue: (id) => request(`/issues/${id}`),
+    createIssue: (input) => request("/issues", { method: "POST", body: JSON.stringify(input) }),
+    respondIssue: (id, message) =>
+      request(`/issues/${id}/respond`, { method: "POST", body: JSON.stringify({ message }) }),
+    resolveIssue: (id, message) =>
+      request(`/issues/${id}/resolve`, { method: "POST", body: JSON.stringify({ message }) }),
+    reopenIssue: (id, message) =>
+      request(`/issues/${id}/reopen`, { method: "POST", body: JSON.stringify({ message }) }),
+    reports: () => request("/reports"),
+    reportMatch: (query) => request(`/reports/preview${queryString(query)}`),
+    createReport: (input) => request("/reports", { method: "POST", body: JSON.stringify(input) }),
   };
 }
 

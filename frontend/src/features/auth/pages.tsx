@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Leaf, ArrowRight, ShieldCheck, UserRound } from "lucide-react";
 import { getApi } from "@/lib/api";
 import { ApiError } from "@/lib/api-contract";
-import { roleLabels } from "@/lib/types";
+import { roleLabels, type Permission, type Session } from "@/lib/types";
+import { effective } from "@/lib/access";
 import { useSession } from "./session";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,10 +34,10 @@ function AuthLayout({ children }: { children: ReactNode }) {
           <h1 className="mt-7 text-5xl leading-tight font-medium">
             Track every return
             <br />
-            from intake to routing
+            from intake to outcome
           </h1>
           <p className="mt-6 max-w-sm text-sm leading-7 text-green-100/75">
-            Manage returned garments, assess their condition, and record the approved processing route.
+            Record garments, prepare contractor pickups, and review the data before it is treated as validated.
           </p>
           <div className="mt-12 flex gap-3 text-xs text-green-100/75">
             <ShieldCheck size={17} /> Secure access based on your assigned role
@@ -56,6 +57,16 @@ function AuthLayout({ children }: { children: ReactNode }) {
     </main>
   );
 }
+function homeFor(session: Session) {
+  const can = (key: Permission) => effective(session.user, key, session.grants);
+  if (can("users.read")) return "/users";
+  if (can("batch.monitor")) return "/monitoring";
+  if (can("returns.read")) return "/garments";
+  if (can("batch.read")) return "/batches";
+  if (can("report.configure")) return "/reports";
+  if (can("issues.respond")) return "/issues/assigned";
+  return "/profile";
+}
 export function LoginPage() {
   const router = useRouter(),
     { refresh, session, ready } = useSession(),
@@ -63,16 +74,7 @@ export function LoginPage() {
     [email, setEmail] = useState(""),
     [password, setPassword] = useState("");
   useEffect(() => {
-    if (ready && session) {
-      const keys = session.grants[session.user.role] ?? [];
-      router.replace(
-        session.user.role === "ADMIN" && keys.includes("users.read")
-          ? "/users"
-          : keys.includes("returns.read")
-            ? "/garments"
-            : "/profile",
-      );
-    }
+    if (ready && session) router.replace(homeFor(session));
   }, [ready, session, router]);
   return (
     <AuthLayout>

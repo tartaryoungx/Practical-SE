@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.core.settings import get_settings
+from app.domains.operations.models import Store
 from app.domains.returns.models import CONDITIONS, ROUTES, EvidenceFile, Garment
 from app.domains.returns.policy import ACCEPTED_TYPES, UPLOAD_LIMIT, evidence_required, recommendation_for
 from app.domains.users.models import User
@@ -28,7 +29,7 @@ def garment_out(db: Session, garment: Garment) -> dict:
         .where(EvidenceFile.garment_id == garment.id)
         .order_by(EvidenceFile.created_at)
     ).all()
-    return {
+    payload = {
         "id": garment.id,
         "type": garment.type,
         "material": garment.material,
@@ -53,6 +54,11 @@ def garment_out(db: Session, garment: Garment) -> dict:
             for item in evidence
         ],
     }
+    if garment.store_code:
+        store = db.get(Store, garment.store_code)
+        payload["storeCode"] = garment.store_code
+        payload["storeName"] = store.name if store else garment.store_code
+    return payload
 
 
 def _field(field: str, message: str) -> AppError:
@@ -75,7 +81,14 @@ def _ensure_draft(garment: Garment) -> None:
         )
 
 
-def create_garment(db: Session, user: User, garment_type: str, material: str, weight: float) -> Garment:
+def create_garment(
+    db: Session,
+    user: User,
+    garment_type: str,
+    material: str,
+    weight: float,
+    store_code: str | None = None,
+) -> Garment:
     garment_type = garment_type.strip()
     material = material.strip()
     if not garment_type:
@@ -84,6 +97,11 @@ def create_garment(db: Session, user: User, garment_type: str, material: str, we
         raise _field("material", "Enter the material.")
     if weight != weight or weight <= 0 or weight == float("inf"):
         raise _field("weight", "Weight must be a positive finite number of kilograms.")
+    code = store_code.strip() if store_code else None
+    if code == "":
+        code = None
+    if code and db.get(Store, code) is None:
+        raise _field("storeCode", "Choose a store.")
     number = db.execute(text("SELECT nextval('garment_seq')")).scalar_one()
     garment = Garment(
         id=f"GR-{int(number):04d}",
@@ -91,6 +109,7 @@ def create_garment(db: Session, user: User, garment_type: str, material: str, we
         material=material,
         weight_kg=Decimal(str(weight)),
         created_by=user.id,
+        store_code=code,
         condition=None,
         recommendation=None,
         confirmed_route=None,

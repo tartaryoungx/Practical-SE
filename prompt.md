@@ -1,5 +1,7 @@
 # Implementation Prompt: Garment Returns MVP — Sprint 1
 
+Sprint 2 addendum: [docs/sprint-2.md](docs/sprint-2.md) is the source of truth for stories 006-1, 006-2, 006-3, 006-4, 007, 008-1, 008-2, 009-1, 009-2, 010-1, 010-2, 011-1, 011-2, 012-1, 012-2, and 013-1. Where this Sprint 1 prompt excludes pickup batches, contractor receipt, sorting, final outcomes, validation, data-issue workflows, or draft report configuration, the Sprint 2 addendum takes precedence. Stories 000 through 005-4 in this file remain in force. Do not remove or break that behavior. Do not implement report generation, publishing, exports, or report history.
+
 ## 01 — Objective & Business Context
 
 Act as a senior full-stack coding agent assisting one developer. Build a maintainable, working Sprint 1 MVP, including frontend, backend, database, and meaningful verification. Inspect the repository and applicable instructions first; preserve unrelated work.

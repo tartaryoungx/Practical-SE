@@ -4,5 +4,5 @@ import typescript from "eslint-config-next/typescript";
 export default defineConfig([
   ...next,
   ...typescript,
-  globalIgnores([".next/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", ".next-browser/**", "next-env.d.ts"]),
 ]);

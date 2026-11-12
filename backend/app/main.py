@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
     )
     from app.domains.access_control.router import router as access_router
     from app.domains.auth.router import router as auth_router
+    from app.domains.operations.router import router as operations_router
     from app.domains.returns.router import router as returns_router
     from app.domains.users.router import router as users_router
 
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(users_router)
     app.include_router(access_router)
     app.include_router(returns_router)
+    app.include_router(operations_router)
 
     @app.get("/health")
     def health(db: Session = Depends(get_db)) -> dict[str, str]:

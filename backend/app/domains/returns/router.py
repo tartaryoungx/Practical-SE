@@ -28,6 +28,7 @@ class GarmentCreate(BaseModel):
     type: str
     material: str
     weight: float
+    storeCode: str | None = None
 
 
 class ConditionIn(BaseModel):
@@ -56,7 +57,10 @@ def add_garment(
     user: User = Depends(require_permission("returns.create")),
     db: Session = Depends(get_db),
 ) -> dict:
-    return garment_out(db, create_garment(db, user, body.type, body.material, body.weight))
+    return garment_out(
+        db,
+        create_garment(db, user, body.type, body.material, body.weight, body.storeCode),
+    )
 
 
 @router.get("/{garment_id}")

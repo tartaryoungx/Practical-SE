@@ -101,12 +101,22 @@ def test_upgrade_creates_only_the_roles_table(db_session) -> None:
     )
     assert names == {
             "alembic_version",
+            "batch_items",
+            "batch_validations",
+            "batches",
+            "data_issues",
             "evidence_files",
+            "final_outcome_items",
+            "final_outcomes",
             "garments",
+            "outcome_evidence",
             "password_reset_tokens",
             "permissions",
+            "report_configurations",
             "role_permissions",
             "roles",
+            "sorting_results",
+            "stores",
             "users",
         }
 
