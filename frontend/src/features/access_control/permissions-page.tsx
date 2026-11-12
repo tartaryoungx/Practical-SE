@@ -210,9 +210,10 @@ function PermissionsEditor({
           </h3>
           <p className="text-xs leading-6 text-muted-foreground">
             Effective access follows the saved grants, the ADMIN-only
-            administration rule, and the reserved-module labels. There is no
-            implicit administrator bypass for garment work. Batch, Outcome,
-            Validation, and Report have definitions only.
+            administration rule, and the reserved labels. Reserved keys do
+            not open a workflow. Operational batch, outcome, validation, and
+            report keys apply on the next request when they are granted.
+            There is no implicit administrator bypass.
           </p>
         </Card>
       </div>

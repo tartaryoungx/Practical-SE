@@ -13,7 +13,11 @@ import {
   PanelLeftOpen,
   Menu,
   Leaf,
-  FlaskConical,
+  Package,
+  LayoutDashboard,
+  Flag,
+  ClipboardList,
+  FileBarChart,
 } from "lucide-react";
 import { useSession } from "@/features/auth/session";
 import { getApi } from "@/lib/api";
@@ -24,12 +28,21 @@ import { Dialog } from "./ui/dialog";
 import { cn } from "@/lib/utils";
 const links = [
   { href: "/garments", label: "Returned garments", icon: Shirt, permission: "returns.read" },
+  { href: "/batches", label: "Pickup batches", icon: Package, permission: "batch.read" },
+  { href: "/monitoring", label: "Batch monitoring", icon: LayoutDashboard, permission: "batch.monitor" },
+  { href: "/issues", label: "Data issues", icon: Flag, permission: "issues.manage" },
+  { href: "/issues/assigned", label: "Assigned issues", icon: ClipboardList, permission: "issues.respond" },
+  { href: "/reports", label: "Report configuration", icon: FileBarChart, permission: "report.configure" },
   { href: "/users", label: "User management", icon: Users, permission: "users.read" },
   { href: "/permissions", label: "Permissions", icon: ShieldCheck, permission: "access.read" },
   { href: "/access", label: "Access review", icon: ShieldCheck, permission: "access.read" },
   { href: "/profile", label: "My profile", icon: UserRound },
   { href: "/change-password", label: "Change password", icon: KeyRound },
 ];
+function isCurrent(href: string, path: string) {
+  if (href === "/issues") return path === "/issues";
+  return path === href || path.startsWith(`${href}/`);
+}
 export function AppShell({ children }: { children: ReactNode }) {
   const { session, ready, can, refresh } = useSession(),
     router = useRouter(),
@@ -65,10 +78,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               href={l.href}
               onClick={() => setMobile(false)}
               title={l.label}
-              aria-current={path.startsWith(l.href) ? "page" : undefined}
+              aria-current={isCurrent(l.href, path) ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
-                path.startsWith(l.href)
+                isCurrent(l.href, path)
                   ? "bg-primary/10 font-medium text-primary"
                   : "text-muted-foreground hover:bg-muted",
               )}
@@ -120,11 +133,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         {nav}
       </aside>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-[11px] text-amber-900">
-          <span className="flex items-center gap-2">
-            <FlaskConical size={14} /> Signed-in workspace
-          </span>
-        </div>
         <header className="flex h-16 items-center justify-between border-b bg-white px-5 md:px-8">
           <div className="flex items-center gap-3">
             <Button
@@ -154,8 +162,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
             <span className="text-sm text-muted-foreground">
               Workspace <span className="mx-2 text-border">/</span>{" "}
-              {links.find((l) => path.startsWith(l.href))?.label ||
-                "Returned garments"}
+              {[...links]
+                .filter((l) => isCurrent(l.href, path))
+                .sort((a, b) => b.href.length - a.href.length)[0]?.label ||
+                "Workspace"}
             </span>
           </div>
           <Badge>{session.user.role}</Badge>

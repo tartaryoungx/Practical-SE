@@ -34,7 +34,7 @@ export function Badge({
   tone = "neutral",
 }: {
   children: ReactNode;
-  tone?: "neutral" | "green" | "amber" | "violet";
+  tone?: "neutral" | "green" | "amber" | "violet" | "red";
 }) {
   return (
     <span
@@ -46,7 +46,9 @@ export function Badge({
             ? "bg-amber-50 text-amber-800"
             : tone === "violet"
               ? "bg-violet-50 text-violet-800"
-              : "bg-muted text-muted-foreground",
+              : tone === "red"
+                ? "bg-red-50 text-red-800"
+                : "bg-muted text-muted-foreground",
       )}
     >
       {children}
@@ -154,23 +156,35 @@ export function Field({
 }
 export function Select({
   label,
+  error,
   children,
   ...props
-}: React.ComponentProps<"select"> & { label: string }) {
+}: React.ComponentProps<"select"> & { label: string; error?: string }) {
   const id = useId();
   return (
     <div className="space-y-2">
       <label htmlFor={id} className="block text-sm font-medium">
         {label}
-        {props.required && <span aria-hidden="true"> *</span>}
+        {props.required && (
+          <span aria-hidden="true" className="ml-1 text-destructive">
+            *
+          </span>
+        )}
       </label>
       <select
         {...props}
         id={id}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-error` : undefined}
         className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
       >
         {children}
       </select>
+      {error && (
+        <p id={`${id}-error`} role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

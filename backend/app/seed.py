@@ -24,6 +24,7 @@ def seed_roles(session: Session) -> None:
 
 def seed_permissions(session: Session) -> None:
     present = set(session.scalars(select(Permission.key)))
+    inserted: list[str] = []
     for item in PERMISSIONS:
         if item["key"] not in present:
             session.add(
@@ -34,12 +35,31 @@ def seed_permissions(session: Session) -> None:
                     reserved=item["reserved"],
                 )
             )
+            inserted.append(item["key"])
     session.flush()
     existing_grants = session.scalar(select(func.count()).select_from(RolePermission)) or 0
     if existing_grants == 0:
+        grant_keys = [key for keys in INITIAL_GRANTS.values() for key in keys]
+    else:
+        # Grant only catalog keys that were inserted on this run. Existing
+        # grants, including revoked ones, stay as configured.
+        grant_keys = inserted
+    if existing_grants == 0 or inserted:
         for role, keys in INITIAL_GRANTS.items():
             for key in keys:
+                if existing_grants != 0 and key not in grant_keys:
+                    continue
                 session.add(RolePermission(role_code=role, permission_key=key))
+    session.commit()
+
+
+def seed_stores(session: Session) -> None:
+    from app.domains.operations.models import STORES, Store
+
+    present = set(session.scalars(select(Store.code)))
+    for code, name in STORES:
+        if code not in present:
+            session.add(Store(code=code, name=name))
     session.commit()
 
 
@@ -68,6 +88,7 @@ def seed_admin(session: Session) -> None:
 def seed_all(session: Session) -> None:
     seed_roles(session)
     seed_permissions(session)
+    seed_stores(session)
     seed_admin(session)
 
 

@@ -37,12 +37,15 @@ def grants_for(db: Session, role: str) -> list[str]:
     )
 
 
+OPERATIONAL_PREFIXES = ("returns.", "batch.", "outcome.", "validation.", "issues.", "report.")
+
+
 def permission_allows(user: User, key: str, granted: list[str]) -> bool:
     if not user.is_active or key not in granted or key.endswith(".reserved"):
         return False
     if key in ACCOUNT_KEYS:
         return user.role_code == "ADMIN"
-    return key.startswith("returns.")
+    return key.startswith(OPERATIONAL_PREFIXES)
 
 
 def require_permission(key: str):
@@ -51,6 +54,19 @@ def require_permission(key: str):
         db: Session = Depends(get_db),
     ) -> User:
         if not permission_allows(user, key, grants_for(db, user.role_code)):
+            raise AppError(403, "FORBIDDEN", "You do not have access to this resource.")
+        return user
+
+    return dependency
+
+
+def require_any_permission(*keys: str):
+    def dependency(
+        user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> User:
+        granted = grants_for(db, user.role_code)
+        if not any(permission_allows(user, key, granted) for key in keys):
             raise AppError(403, "FORBIDDEN", "You do not have access to this resource.")
         return user
 

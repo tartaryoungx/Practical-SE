@@ -21,6 +21,7 @@ class Garment(Base):
     material: Mapped[str] = mapped_column(String(200))
     weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3))
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    store_code: Mapped[str | None] = mapped_column(String(32), ForeignKey("stores.code"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     condition: Mapped[str | None] = mapped_column(String(16), nullable=True)
     recommendation: Mapped[str | None] = mapped_column(String(32), nullable=True)

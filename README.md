@@ -1,14 +1,14 @@
 # Garment Returns
 
-Sprint 1 local application: a Next.js workspace and a FastAPI backend on PostgreSQL 16. Compose runs PostgreSQL only. FastAPI and Next.js run on the host.
+Local application for Sprint 1 accounts and garment returns, plus the Sprint 2 pickup, sorting, outcome, monitoring, validation, correction, and draft report-configuration workflows. A Next.js workspace and a FastAPI backend run on the host. Compose runs PostgreSQL 16 only.
 
-The signed-in UI calls the API at `NEXT_PUBLIC_API_BASE_URL`. Account administration is ADMIN-only. Garment access follows granted Return permissions and is not limited by store.
+The signed-in UI calls the API at `NEXT_PUBLIC_API_BASE_URL`. Account administration is ADMIN-only. Garment access follows granted Return permissions and is not limited by store. Pickup batches do require a store on each included garment. `docs/sprint-2.md` is the source of truth where it overrides a Sprint 1 exclusion.
 
 ## Prerequisites
 
 - Python 3.12
 - Docker with Docker Compose
-- Node.js 22 and npm, only if you also want to run the existing frontend prototype
+- Node.js 22 and npm for the workspace UI
 
 FastAPI and Next.js run on the host. Compose runs PostgreSQL only.
 
@@ -70,13 +70,13 @@ npm run dev
 
 The API is http://localhost:8000. `GET /health` checks the database with `SELECT 1` and returns `{"status": "ok"}`. Interactive API docs are at http://localhost:8000/docs. The workspace is at http://localhost:3000.
 
-`python -m app.seed` creates the four roles, permission definitions, and the initial grants when no grants exist yet. It also creates the bootstrap administrator from `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` when that email is new. Running it again does not duplicate rows, reset that password, or overwrite grants. The example bootstrap password is `replace_me`.
+`python -m app.seed` creates the four roles, permission definitions, and the initial grants when no grants exist yet. It also creates the bootstrap administrator from `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` when that email is new, and the reference stores `central`, `north`, and `east`. Running it again does not duplicate rows, reset that password, or restore a grant an administrator has removed. A new permission key is granted to its initial role only when that key itself is new. The example bootstrap password is `replace_me`.
 
-Run `python -m app.seed` again whenever you need to confirm the roles exist. A second run inserts nothing new when the catalog and administrator are already present.
+Run `python -m app.seed` again after an upgrade that adds permission keys. A second run inserts nothing new when the catalog, stores, and administrator are already present.
 
 ## Tests
 
-Story 000 tests need the same Postgres server. They create a temporary database named `gr_test_<random>`, migrate that database, and drop only that database. They do not migrate, truncate, or drop the application database, and they do not remove the Docker volume.
+Backend tests need the same Postgres server. They create a temporary database named `gr_test_<random>`, migrate that database, and drop only that database. They do not migrate, truncate, or drop the application database, and they do not remove the Docker volume. The Sprint 2 checks are in `backend/tests/test_sprint2.py`. Browser tests are `cd frontend && npm run test:browser`. They need Playwright Chromium (`npx playwright install chromium`) and create a temporary `gr_browser_*` database, which the teardown drops. They do not use the application database.
 
 From `backend/` with the virtualenv active:
 
@@ -90,11 +90,11 @@ Use the same user and password as `DATABASE_URL`. The database name in `TEST_DAT
 
 - Python 3.12, synchronous SQLAlchemy 2.x, and psycopg 3.
 - PostgreSQL 16. Data is stored in the named volume `pgdata` at `/var/lib/postgresql/data`.
-- Schema changes go through Alembic. The application does not create tables at startup.
-- The only table added here is `roles`, with primary key `code` limited to the four roles above. `alembic_version` is Alembic's own bookkeeping table.
+- Schema changes go through Alembic. The application does not create tables at startup. Revision `0005` adds stores, batches, sorting, final outcomes, validations, data issues, and draft report configurations. `garments.store_code` stays nullable, and the migration does not assign existing garments to a store.
+- The four roles remain `ADMIN`, `STORE_STAFF`, `CONTRACTOR`, and `HEAD`.
 - API errors use one JSON shape: `{ "error": { "code": "...", "message": "...", "details": [] } }`. Validation uses HTTP 422. Missing resources use 404. A database failure uses 503 and does not include the driver error. Unexpected failures use 500 and do not include a traceback.
-- CORS allows `http://localhost:3000` with credentials. Wildcard origins are rejected.
-- `JWT_SECRET`, cookie settings, and `UPLOAD_DIR` are loaded so later stories can use the same settings file. This slice does not issue tokens, set cookies, hash passwords, or store uploads.
+- CORS allows `http://localhost:3000` with credentials. Use that host in the browser. `http://127.0.0.1:3000` is not an allowed origin. Wildcard origins are rejected.
+- Sign-in issues an HTTP-only JWT cookie. State-changing requests send `X-CSRF-Token` from the readable CSRF cookie. Uploaded evidence is stored under `UPLOAD_DIR`.
 
 ## Data preservation
 

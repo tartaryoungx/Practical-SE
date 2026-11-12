@@ -32,6 +32,7 @@ import {
   Badge,
   Notice,
   Field,
+  Select,
   Feedback,
   Submit,
   Loading,
@@ -91,6 +92,7 @@ export function GarmentsPage() {
           <thead>
             <tr>
               <th>ID / Type</th>
+              <th>Store</th>
               <th>Recorded</th>
               <th>Condition</th>
               <th>Status</th>
@@ -112,6 +114,7 @@ export function GarmentsPage() {
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">{g.type}</p>
                 </td>
+                <td className="text-xs">{g.storeName || "Not assigned"}</td>
                 <td className="text-xs">{date(g.createdAt)}</td>
                 <td>{g.condition ? conditionLabels[g.condition] : "—"}</td>
                 <td>
@@ -155,9 +158,12 @@ export function GarmentsPage() {
 export function NewGarmentPage() {
   const { session, can } = useSession(),
     router = useRouter(),
-    action = useAction();
+    action = useAction(),
+    stores = useResource(useCallback(() => getApi().stores(), []));
   if (!can("returns.create"))
     return <Notice tone="error">You do not have permission to record a garment.</Notice>;
+  if (stores.error) return <ResourceError error={stores.error} retry={stores.reload} />;
+  if (!stores.data) return <Loading />;
   return (
     <>
       <Link
@@ -182,6 +188,7 @@ export function NewGarmentPage() {
                   type: v.type,
                   material: v.material,
                   weight: Number(v.weight),
+                  storeCode: v.storeCode || undefined,
                 });
                 router.push("/garments/" + g.id + "?created=1");
               });
@@ -215,6 +222,22 @@ export function NewGarmentPage() {
               placeholder="0.25"
               error={action.error?.fields.weight}
             />
+            <Select
+              label="Store"
+              name="storeCode"
+              error={action.error?.fields.storeCode}
+            >
+              <option value="">Select a store</option>
+              {stores.data.map((store) => (
+                <option key={store.code} value={store.code}>
+                  {store.name}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              A pickup batch can include only garments recorded for the selected store.
+              Older records without a store stay unassigned.
+            </p>
             <Feedback action={action} />
             <div className="flex justify-end gap-2 border-t pt-5">
               <Button asChild variant="outline">
@@ -375,6 +398,7 @@ function GarmentEditor({
                 ["Type", g.type],
                 ["Material", g.material],
                 ["Weight", g.weight + " kg"],
+                ["Store", g.storeName || "Not assigned"],
                 ["Recorded by", g.creatorId],
                 ["Created", date(g.createdAt)],
                 ["Record id", g.id],

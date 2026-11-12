@@ -39,6 +39,9 @@ function fail(
 ): never {
   throw new ApiError(code, message, fields);
 }
+async function unsupported(): Promise<never> {
+  throw new ApiError("NOT_IMPLEMENTED", "This action is not available.");
+}
 function password(value: string) {
   if (value.length < 8 || value.length > 128)
     fail("VALIDATION", "Password must be 8–128 characters.", {
@@ -399,5 +402,34 @@ export function createMockApi(
         g.confirmedAt = new Date().toISOString();
         return g;
       }, true),
+    stores: unsupported,
+    contractors: unsupported,
+    assignees: unsupported,
+    batches: unsupported,
+    monitoring: unsupported,
+    batch: unsupported,
+    createBatch: unsupported,
+    removeBatchItem: unsupported,
+    confirmBatch: unsupported,
+    pickupBatch: unsupported,
+    receiveBatch: unsupported,
+    saveSorting: unsupported,
+    submitSorting: unsupported,
+    saveOutcomes: unsupported,
+    uploadOutcomeEvidence: unsupported,
+    outcomeEvidenceUrl: unsupported,
+    submitOutcomes: unsupported,
+    validation: unsupported,
+    decideValidation: unsupported,
+    issues: unsupported,
+    myIssues: unsupported,
+    issue: unsupported,
+    createIssue: unsupported,
+    respondIssue: unsupported,
+    resolveIssue: unsupported,
+    reopenIssue: unsupported,
+    reports: unsupported,
+    reportMatch: unsupported,
+    createReport: unsupported,
   };
 }
